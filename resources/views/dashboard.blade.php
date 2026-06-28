@@ -428,16 +428,29 @@
         $teksWaspada = 'terdapat risiko iklim yang perlu diperhatikan';
     }
 
-    $statusUser = match($rekomendasiIklim['status']) {
+    $isHistorical = $isHistorical ?? false;
+    $statusTanamAsli = $rekomendasiIklim['status'] ?? null;
+    $judulCardTanam = $isHistorical ? 'Evaluasi Kondisi Tanam' : 'Rekomendasi Waktu Tanam';
+
+    $statusUser = match($statusTanamAsli) {
         'Direkomendasikan' => 'Direkomendasikan',
-        'Direkomendasikan dengan Waspada' => 'Direkomendasikan dengan Waspada',
+        'Direkomendasikan dengan Waspada', 'Perlu Waspada' => 'Perlu Waspada',
         'Tidak Direkomendasikan' => 'Tidak Direkomendasikan',
         default => 'Data Belum Lengkap',
     };
 
-    $statusIcon = match($rekomendasiIklim['status']) {
+    $statusTanamLabel = $isHistorical
+        ? match($statusTanamAsli) {
+            'Direkomendasikan' => 'Kondisi Tanam Sesuai',
+            'Direkomendasikan dengan Waspada', 'Perlu Waspada' => 'Kondisi Tanam Memerlukan Perhatian',
+            'Tidak Direkomendasikan' => 'Kondisi Tanam Kurang Sesuai',
+            default => $statusUser,
+        }
+        : $statusUser;
+
+    $statusIcon = match($statusTanamAsli) {
         'Direkomendasikan' => 'fa-circle-check text-green-600',
-        'Direkomendasikan dengan Waspada' => 'fa-triangle-exclamation text-yellow-600',
+        'Direkomendasikan dengan Waspada', 'Perlu Waspada' => 'fa-triangle-exclamation text-yellow-600',
         'Tidak Direkomendasikan' => 'fa-circle-xmark text-red-600',
         default => 'fa-circle-info text-slate-600',
     };
@@ -526,11 +539,11 @@
 
             <div>
                 <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Status Rekomendasi Tanam
+                    {{ $judulCardTanam }}
                 </p>
 
                 <h2 class="mt-1 text-2xl font-bold text-slate-900">
-                    {{ $statusUser }}
+                    {{ $statusTanamLabel }}
                 </h2>
 
                 <p class="mt-2 text-sm text-slate-600">
@@ -1436,9 +1449,9 @@
     @endif
 
     @if(!empty($rekomendasiIklim))
-        <h2>Rekomendasi Tanam</h2>
+        <h2>{{ $judulCardTanam ?? 'Rekomendasi Waktu Tanam' }}</h2>
 
-        <p>Status rekomendasi: <strong>{{ $statusUser }}</strong></p>
+        <p>Status rekomendasi: <strong>{{ $statusTanamLabel ?? $statusUser }}</strong></p>
         <p>Periode analisis: <strong>{{ $rekomendasiIklim['periode'] }}</strong></p>
         <p>{{ $kesimpulan }}</p>
 

@@ -27,6 +27,7 @@ class DashboardController extends Controller
         $tanggal = $request->tanggal_tanam ?? Carbon::now(self::DASHBOARD_TIMEZONE)->format('Y-m-d');
         $selectedDate = Carbon::parse($tanggal, self::DASHBOARD_TIMEZONE)->startOfDay();
         $today = Carbon::today(self::DASHBOARD_TIMEZONE);
+        $isHistorical = Carbon::parse($tanggal, self::DASHBOARD_TIMEZONE)->lt($today);
 
         $tanggalTanam = $tanggal;
         $rekomendasiIklim = $rekomendasiService->hitung($tanggalTanam);
@@ -82,6 +83,7 @@ class DashboardController extends Controller
             'warna',
             'grafikData',
             'tanggalTanam',
+            'isHistorical',
             'rekomendasiIklim',
             'rekomendasiVarietas'
         ));
