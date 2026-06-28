@@ -1371,11 +1371,11 @@
 </script>
 
 <div id="downloadReport">
-    <h1>Laporan Hasil Analisis Pertanian Presisi Padi</h1>
+    <h1>Laporan Hasil Analisis Pertanian Presisi untuk Komoditas Padi Wilayah Bogor</h1>
 
     <p>
         Dicetak pada:
-        <strong>{{ now()->locale('id')->translatedFormat('d F Y H:i') }}</strong>
+        <strong>{{ now()->timezone('Asia/Jakarta')->locale('id')->translatedFormat('d F Y H:i') }}</strong>
     </p>
 
     @if(request('tanggal_tanam'))
