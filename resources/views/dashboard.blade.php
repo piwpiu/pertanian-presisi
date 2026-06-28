@@ -33,12 +33,14 @@
             <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-500 text-white shadow-lg shadow-emerald-500/20">
                 <i class="fa-solid fa-cloud text-white text-lg" aria-hidden="true"></i>
             </div>
+
             <div class="flex flex-col leading-tight">
                 <span class="text-xs uppercase tracking-[0.35em] text-slate-500">DASHBOARD</span>
                 <span class="text-lg font-semibold text-slate-900 md:text-xl">Pertanian Presisi Padi</span>
             </div>
         </div>
 
+        {{-- Desktop Navigation --}}
         <div class="hidden flex-1 items-center justify-end gap-4 lg:flex">
             <nav class="flex flex-wrap items-center gap-2">
                 <a href="#info" class="rounded-full px-4 py-2 text-sm font-semibold text-slate-700 transition duration-300 hover:bg-emerald-50 hover:text-emerald-700">Info</a>
@@ -46,13 +48,29 @@
                 <a href="#rekomendasi" class="rounded-full px-4 py-2 text-sm font-semibold text-slate-700 transition duration-300 hover:bg-emerald-50 hover:text-emerald-700">Rekomendasi</a>
                 <a href="#download" class="rounded-full px-4 py-2 text-sm font-semibold text-slate-700 transition duration-300 hover:bg-emerald-50 hover:text-emerald-700">Download</a>
             </nav>
-            <form method="GET" action="/" class="flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-2 shadow-sm">
-                <label class="sr-only">Masukkan Tanggal Tanam</label>
-                <input type="date" name="tanggal_tanam" class="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-400" value="{{ request('tanggal_tanam') ?? '' }}">
-                <button class="inline-flex items-center justify-center rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-500">Lihat</button>
+
+            <form method="GET" action="{{ url('/') }}" class="flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-2 shadow-sm">
+                <label for="tanggal_tanam_desktop" class="sr-only">Masukkan Tanggal Tanam</label>
+
+                <input
+                    id="tanggal_tanam_desktop"
+                    type="date"
+                    name="tanggal_tanam"
+                    class="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                    value="{{ request('tanggal_tanam') ?? '' }}"
+                    onchange="this.form.submit()"
+                >
+
+                <button
+                    type="submit"
+                    class="inline-flex items-center justify-center rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-500"
+                >
+                    Lihat
+                </button>
             </form>
         </div>
 
+        {{-- Mobile Toggle --}}
         <button id="navToggle" aria-expanded="false" class="inline-flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-800 shadow-sm transition duration-300 hover:bg-slate-100 lg:hidden">
             <span class="sr-only">Toggle navigation menu</span>
             <i class="fa-solid fa-bars text-lg" aria-hidden="true"></i>
@@ -60,7 +78,8 @@
     </div>
 
     <div class="h-1.5 bg-gradient-to-r from-emerald-500 via-emerald-400 to-lime-300 w-full"></div>
-    <!-- Mobile navigation menu -->
+
+    {{-- Mobile Navigation Menu --}}
     <div id="mobileMenu" class="hidden border-t border-slate-200 bg-white/95 px-4 py-4 shadow-xl backdrop-blur-xl lg:hidden">
         <nav class="flex flex-col gap-3">
             <a href="#info" class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700 transition duration-300 hover:bg-emerald-50">Info</a>
@@ -68,46 +87,93 @@
             <a href="#rekomendasi" class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700 transition duration-300 hover:bg-emerald-50">Rekomendasi</a>
             <a href="#download" class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700 transition duration-300 hover:bg-emerald-50">Download</a>
         </nav>
-        <form method="GET" action="/" class="mt-4 flex gap-2 rounded-full border border-slate-200 bg-slate-50 p-2">
-            <label class="sr-only">Masukkan Tanggal Tanam</label>
-            <input type="date" name="tanggal_tanam" class="flex-1 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-400" value="{{ request('tanggal_tanam') ?? '' }}">
-            <button class="inline-flex items-center justify-center rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-500">Lihat</button>
+
+        <form method="GET" action="{{ url('/') }}" class="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <label for="tanggal_tanam_menu" class="mb-2 block text-sm font-semibold text-slate-700">
+                Pilih Tanggal Tanam
+            </label>
+
+            <input
+                id="tanggal_tanam_menu"
+                type="date"
+                name="tanggal_tanam"
+                class="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                value="{{ request('tanggal_tanam') ?? '' }}"
+                onchange="this.form.submit()"
+            >
+
+            <button
+                type="submit"
+                class="mt-3 w-full rounded-xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-500"
+            >
+                Lihat
+            </button>
+
+            <p class="mt-2 text-xs text-slate-500">
+                Hasil akan otomatis berubah setelah tanggal dipilih.
+            </p>
         </form>
     </div>
 </header>
-<div class="h-20"></div>
-<div class="max-w-6xl mx-auto px-4 py-4">
 
-@if(request('tanggal_tanam'))
-<div class="mt-4 bg-blue-50 border border-blue-200 p-4 rounded-xl shadow">
-    <h2 class="font-semibold text-blue-700 mb-1"></h2>
-    
-    <p class="text-lg font-bold text-blue-900">
-        {{ \Carbon\Carbon::parse(request('tanggal_tanam'))->locale('id')->translatedFormat('d F Y') }}
-    </p>
+<div class="max-w-6xl mx-auto px-4 pt-28 pb-8 lg:pt-28">
+    {{-- Mobile Date Picker: tampil langsung di halaman --}}
+    <div class="block lg:hidden mb-5">
+        <form method="GET" action="{{ url('/') }}" class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <label for="tanggal_tanam_mobile_visible" class="mb-2 block text-sm font-semibold text-slate-700">
+                Pilih Tanggal Tanam
+            </label>
 
-    <p class="text-sm text-gray-600">
-        Hari: {{ \Carbon\Carbon::parse(request('tanggal_tanam'))->locale('id')->translatedFormat('l') }}
-    </p>
-</div>
-@endif
+            <input
+                id="tanggal_tanam_mobile_visible"
+                type="date"
+                name="tanggal_tanam"
+                class="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                value="{{ request('tanggal_tanam') ?? '' }}"
+                onchange="this.form.submit()"
+            >
 
-@if($umur !== null && $umur > 0)
-<div class="mt-6 bg-white p-4 rounded-xl shadow">
-    <h2 class="font-semibold mb-2">Informasi Tanaman</h2>
-    <p>Umur Tanaman: <b>{{ $umur }} hari</b></p>
-    <p>Fase: 
-    <span class="font-bold
-        @if($fase == 'Vegetatif Awal') text-green-500
-        @elseif($fase == 'Vegetatif Akhir') text-blue-500
-        @elseif($fase == 'Generatif') text-yellow-500
-        @else text-red-500
-        @endif">
-        {{ $fase }}
-    </span>
-    </p>
-</div>
-@endif
+            <button
+                type="submit"
+                class="mt-3 w-full rounded-xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-500"
+            >
+                Lihat
+            </button>
+
+            <p class="mt-2 text-xs text-slate-500">
+                Hasil akan otomatis berubah setelah tanggal dipilih.
+            </p>
+        </form>
+    </div>
+
+    @if(request('tanggal_tanam'))
+    <div class="bg-blue-50 border border-blue-200 p-4 rounded-xl shadow">
+        <p class="text-lg font-bold text-blue-900">
+            {{ \Carbon\Carbon::parse(request('tanggal_tanam'))->locale('id')->translatedFormat('d F Y') }}
+        </p>
+
+        <p class="text-sm text-gray-600">
+            Hari: {{ \Carbon\Carbon::parse(request('tanggal_tanam'))->locale('id')->translatedFormat('l') }}
+        </p>
+    </div>
+    @endif
+
+    @if($umur !== null && $umur > 0)
+    <div class="mt-6 bg-white p-4 rounded-xl shadow">
+        <h2 class="font-semibold mb-2">Informasi Tanaman</h2>
+        <p>Umur Tanaman: <b>{{ $umur }} hari</b></p>
+        <p>Fase:
+            <span class="font-bold
+                @if($fase == 'Vegetatif Awal') text-green-500
+                @elseif($fase == 'Vegetatif Akhir') text-blue-500
+                @elseif($fase == 'Generatif') text-yellow-500
+                @else text-red-500
+                @endif">
+                {{ $fase }}
+            </span>
+        </p>
+    </div>
+    @endif
 
 @if($data)
 @php
