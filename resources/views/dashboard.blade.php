@@ -10,8 +10,78 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
 
     <style>
+    .no-print {}
+
+    #downloadReport {display: none;}
+
     @media print {
-        button { display: none; }
+        body {background: #ffffff !important;}
+
+        body * {visibility: hidden !important;}
+
+        #downloadReport,
+        #downloadReport * {visibility: visible !important;}
+
+        #downloadReport {
+            display: none;
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            padding: 32px;
+            background: #ffffff;
+            color: #0f172a;
+            font-family: Arial, sans-serif;
+        }
+
+        .no-print {display: none !important;}
+
+        #downloadReport h1 {
+            font-size: 22px;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        #downloadReport h2 {
+            font-size: 16px;
+            font-weight: bold;
+            margin-top: 20px;
+            margin-bottom: 8px;
+            border-bottom: 1px solid #cbd5e1;
+            padding-bottom: 4px;
+        }
+
+        #downloadReport p,
+        #downloadReport li {
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        #downloadReport table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 8px;
+            margin-bottom: 12px;
+        }
+
+        #downloadReport th,
+        #downloadReport td {
+            border: 1px solid #cbd5e1;
+            padding: 8px;
+            font-size: 12px;
+            text-align: left;
+            vertical-align: top;
+        }
+
+        #downloadReport th {
+            background: #f1f5f9;
+            font-weight: bold;
+        }
+
+        @page {
+            size: A4;
+            margin: 14mm;
+        }
     }
 
     .section-anchor {
@@ -27,7 +97,7 @@
 
 <body class="bg-gradient-to-br from-emerald-50 via-white to-slate-100 text-slate-900">
 <!-- Main sticky navigation bar -->
-<header id="navbar" class="fixed top-0 left-0 w-full z-50 transition-all duration-300 border-b border-slate-200 bg-white/90 shadow-sm backdrop-blur-sm">
+<header id="navbar" class="no-print fixed top-0 left-0 w-full z-50 transition-all duration-300 border-b border-slate-200 bg-white/90 shadow-sm backdrop-blur-sm">
     <div class="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
         <div class="flex items-center gap-4">
             <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-500 text-white shadow-lg shadow-emerald-500/20">
@@ -288,8 +358,36 @@
     </div>
 </div>
 
-<!-- Download section anchor -->
-<div id="download" class="section-anchor"></div>
+<!-- Download Section -->
+<div id="download" class="section-anchor mt-6 no-print">
+    <div class="rounded-xl border border-slate-200 bg-white p-6 shadow">
+        <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div>
+                <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Download Informasi
+                </p>
+
+                <h2 class="mt-1 text-xl font-bold text-slate-900">
+                    Unduh Hasil Analisis
+                </h2>
+
+                <p class="mt-2 text-sm leading-relaxed text-slate-600">
+                    File unduhan berisi ringkasan tanggal tanam, informasi iklim,
+                    rekomendasi tanam, estimasi kebutuhan air, dan rekomendasi varietas padi.
+                </p>
+            </div>
+
+            <button
+                type="button"
+                onclick="downloadLaporan()"
+                class="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-500"
+            >
+                <i class="fa-solid fa-download"></i>
+                Download / Cetak PDF
+            </button>
+        </div>
+    </div>
+</div>
 
 <!-- Kondisi Iklim Optimal -->
 @if(!empty($rekomendasiIklim))
@@ -315,9 +413,9 @@
     }
 
     if (!$hujanOk && $hujan !== null && $hujan < 150) {
-        $parameterWaspada[] = 'curah hujan masih rendah';
+        $parameterWaspada[] = 'curah hujan yang masih rendah';
     } elseif (!$hujanOk && $hujan !== null && $hujan > 200) {
-        $parameterWaspada[] = 'curah hujan terlalu tinggi';
+        $parameterWaspada[] = 'curah hujan yang terlalu tinggi';
     }
 
     if (count($parameterWaspada) > 1) {
@@ -365,7 +463,7 @@
             "Berdasarkan hasil analisis selama 30 hari, sebagian kondisi iklim sudah mendukung. Namun, terdapat kondisi yang perlu diperhatikan, yaitu {$teksWaspada}.",
 
         'Tidak Direkomendasikan' =>
-            "Berdasarkan hasil analisis selama 30 hari, kondisi iklim belum cukup mendukung karena {$teksWaspada}. Kondisi tersebut dapat meningkatkan risiko gangguan pada fase awal pertumbuhan padi.",
+            "Berdasarkan hasil analisis selama 30 hari, kondisi iklim belum cukup mendukung karena {$teksWaspada}. Kondisi tersebut dapat meningkatkan risiko gangguan pada periode pertumbuhan padi.",
 
         default =>
             'Data iklim selama 30 hari belum lengkap sehingga rekomendasi belum dapat dihitung secara penuh.',
@@ -1272,12 +1370,254 @@
     }
 </script>
 
-<div class="max-w-6xl mx-auto px-4 py-3"></div>
-<button onclick="window.print()" 
-    class="mb-4 bg-blue-500 text-white px-4 py-2 rounded">
-    Download / Cetak
-</button>
+<div id="downloadReport">
+    <h1>Laporan Hasil Analisis Pertanian Presisi Padi</h1>
 
-    </div>
+    <p>
+        Dicetak pada:
+        <strong>{{ now()->locale('id')->translatedFormat('d F Y H:i') }}</strong>
+    </p>
+
+    @if(request('tanggal_tanam'))
+        <h2>Informasi Tanggal Tanam</h2>
+        <p>
+            Tanggal tanam:
+            <strong>{{ \Carbon\Carbon::parse(request('tanggal_tanam'))->locale('id')->translatedFormat('d F Y') }}</strong>
+        </p>
+        <p>
+            Hari:
+            <strong>{{ \Carbon\Carbon::parse(request('tanggal_tanam'))->locale('id')->translatedFormat('l') }}</strong>
+        </p>
+    @endif
+
+    @if($umur !== null && $umur > 0)
+        <h2>Informasi Tanaman</h2>
+        <p>Umur tanaman: <strong>{{ $umur }} hari</strong></p>
+        <p>Fase tanaman: <strong>{{ $fase }}</strong></p>
+    @endif
+
+    @if($data)
+        <h2>Informasi Iklim Harian</h2>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Parameter</th>
+                    <th>Nilai</th>
+                    <th>Sumber Data</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Suhu</td>
+                    <td>{{ $data->suhu }} °C</td>
+                    <td>{{ $data->source_label }}</td>
+                </tr>
+                <tr>
+                    <td>Curah Hujan</td>
+                    <td>{{ $data->curah_hujan }} mm</td>
+                    <td>{{ $data->source_label }}</td>
+                </tr>
+                <tr>
+                    <td>Kelembaban</td>
+                    <td>{{ $data->kelembaban }} %</td>
+                    <td>{{ $data->source_label }}</td>
+                </tr>
+            </tbody>
+        </table>
+
+        @if($data->updated_at_label)
+            <p>
+                Terakhir diperbarui:
+                <strong>{{ $data->updated_at_label }}</strong>
+            </p>
+        @endif
+    @endif
+
+    @if(!empty($rekomendasiIklim))
+        <h2>Rekomendasi Tanam</h2>
+
+        <p>Status rekomendasi: <strong>{{ $statusUser }}</strong></p>
+        <p>Periode analisis: <strong>{{ $rekomendasiIklim['periode'] }}</strong></p>
+        <p>{{ $kesimpulan }}</p>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Parameter</th>
+                    <th>Nilai</th>
+                    <th>Status</th>
+                    <th>Rentang Acuan</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Suhu</td>
+                    <td>{{ $suhu !== null ? $suhu.' °C' : '-' }}</td>
+                    <td>{{ $suhuOk ? 'Mendukung' : 'Belum Mendukung' }}</td>
+                    <td>24 – 32°C</td>
+                </tr>
+                <tr>
+                    <td>Kelembaban</td>
+                    <td>{{ $kelembaban !== null ? $kelembaban.' %' : '-' }}</td>
+                    <td>{{ $kelembabanOk ? 'Mendukung' : 'Belum Mendukung' }}</td>
+                    <td>60 – 90%</td>
+                </tr>
+                <tr>
+                    <td>Curah Hujan</td>
+                    <td>{{ $hujan !== null ? $hujan.' mm' : '-' }}</td>
+                    <td>{{ $hujanOk ? 'Mendukung' : 'Belum Mendukung' }}</td>
+                    <td>150 – 200 mm/30 hari</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <p><strong>Kesimpulan:</strong> {{ $kesimpulanDetail }}</p>
+        <p><strong>Saran:</strong> {{ $saranDetail }}</p>
+    @endif
+
+    @if(!empty($rekomendasiIklim['kebutuhan_air']))
+        <h2>Estimasi Kebutuhan Air</h2>
+
+        <p>Status: <strong>{{ $statusAir }}</strong></p>
+        <p>Kebutuhan air: <strong>{{ $air['kebutuhan_minimum'] }} – {{ $air['kebutuhan_maksimum'] }} mm/30 hari</strong></p>
+        <p>Total curah hujan: <strong>{{ $air['total_curah_hujan'] !== null ? $air['total_curah_hujan'].' mm' : '-' }}</strong></p>
+
+        @if($nilaiSelisihAir !== null)
+            <p>{{ $labelSelisihAir }}: <strong>{{ $nilaiSelisihAir }} mm</strong></p>
+        @endif
+
+        <p>{{ $air['kesimpulan'] }}</p>
+
+        @if(!empty($air['saran']))
+            <p><strong>Catatan:</strong> {{ $air['saran'] }}</p>
+        @endif
+    @endif
+
+    @if(!empty($rekomendasiVarietas))
+        <h2>Rekomendasi Varietas Padi</h2>
+
+        <p>Kategori: <strong>{{ $rekomendasiVarietas['kategori_tampilan'] }}</strong></p>
+        <p>Periode analisis: <strong>{{ $rekomendasiVarietas['periode'] }}</strong></p>
+        <p>Total curah hujan: <strong>{{ $rekomendasiVarietas['total_curah_hujan'] }} mm</strong></p>
+        <p>{{ $teksRekomendasiVarietas }}</p>
+
+        @if($rekomendasiVarietas['valid'])
+            <p><strong>Varietas utama:</strong></p>
+            <ol>
+                @foreach($rekomendasiVarietas['varietas_utama'] as $namaVarietas)
+                    <li>{{ $namaVarietas }}</li>
+                @endforeach
+            </ol>
+
+            @if(!empty($rekomendasiVarietas['varietas_alternatif']))
+                <p>
+                    <strong>Varietas alternatif:</strong>
+                    {{ implode(', ', $rekomendasiVarietas['varietas_alternatif']) }}
+                </p>
+            @endif
+        @endif
+
+        <p>{{ $rekomendasiVarietas['penjelasan'] }}</p>
+    @endif
+
+    <h2>Catatan</h2>
+    <p>
+        Laporan ini dihasilkan secara otomatis oleh Website Pertanian Presisi untuk komoditas padi
+        berdasarkan data klimatologi, data prediksi, dan hasil analisis rekomendasi.
+    </p>
+</div>
+
+<script>
+    function downloadLaporan() {
+        const report = document.getElementById('downloadReport');
+
+        if (!report) {
+            alert('Data laporan belum tersedia.');
+            return;
+        }
+
+        const tanggalTanam = "{{ request('tanggal_tanam') ?? 'tanpa-tanggal' }}";
+        const printWindow = window.open('', '_blank');
+
+        printWindow.document.write(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <title>Laporan-Pertanian-Presisi-${tanggalTanam}</title>
+                <style>
+                    @page {
+                        size: A4;
+                        margin: 14mm;
+                    }
+
+                    body {
+                        background: #ffffff;
+                        color: #0f172a;
+                        font-family: Arial, sans-serif;
+                        padding: 0;
+                        margin: 0;
+                    }
+
+                    h1 {
+                        font-size: 22px;
+                        font-weight: bold;
+                        margin-bottom: 8px;
+                    }
+
+                    h2 {
+                        font-size: 16px;
+                        font-weight: bold;
+                        margin-top: 20px;
+                        margin-bottom: 8px;
+                        border-bottom: 1px solid #cbd5e1;
+                        padding-bottom: 4px;
+                    }
+
+                    p,
+                    li {
+                        font-size: 13px;
+                        line-height: 1.6;
+                    }
+
+                    table {
+                        width: 100%;
+                        border-collapse: collapse;
+                        margin-top: 8px;
+                        margin-bottom: 12px;
+                    }
+
+                    th,
+                    td {
+                        border: 1px solid #cbd5e1;
+                        padding: 8px;
+                        font-size: 12px;
+                        text-align: left;
+                        vertical-align: top;
+                    }
+
+                    th {
+                        background: #f1f5f9;
+                        font-weight: bold;
+                    }
+                </style>
+            </head>
+            <body>
+                ${report.innerHTML}
+            </body>
+            </html>
+        `);
+
+        printWindow.document.close();
+
+        printWindow.onload = function () {
+            printWindow.focus();
+            printWindow.print();
+            printWindow.close();
+        };
+    }
+</script>
+
 </body>
 </html>

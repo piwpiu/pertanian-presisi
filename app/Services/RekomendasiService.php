@@ -211,7 +211,7 @@ class RekomendasiService
                     'Inpari 39',
                 ],
                 'kesimpulan' => 'Curah hujan 30 hari berada di bawah kebutuhan air padi, sehingga varietas tadah hujan lebih disarankan untuk mengurangi risiko kekurangan air.',
-                'penjelasan' => 'Total curah hujan selama 30 hari berada di bawah kebutuhan air yang dianjurkan, yaitu 150–200 mm per 30 hari. Kondisi ini menunjukkan potensi kekurangan air sehingga varietas tadah hujan atau varietas yang lebih toleran terhadap kondisi kering lebih sesuai digunakan.',
+                'penjelasan' => 'Total curah hujan selama 30 hari berada di bawah kebutuhan air yang dianjurkan, yaitu 150–200 mm per 30 hari. Kondisi ini menunjukkan potensi kekurangan air sehingga varietas tadah hujan atau varietas yang lebih toleran terhadap kondisi kering lebih sesuai untuk digunakan.',
             ];
         }
 
@@ -272,7 +272,7 @@ class RekomendasiService
                 'Ciherang',
             ],
             'kesimpulan' => 'Curah hujan 30 hari melebihi kebutuhan air untuk tanaman padi, sehingga varietas yang toleran terhadap rendaman lebih disarankan untuk mengurangi risiko genangan.',
-            'penjelasan' => 'Total curah hujan selama 30 hari melebihi kebutuhan air yang dianjurkan, yaitu 150–200 mm per 30 hari. Kondisi ini menunjukkan potensi kelebihan air, genangan, atau banjir sehingga varietas yang lebih toleran terhadap rendaman lebih sesuai digunakan.',
+            'penjelasan' => 'Total curah hujan selama 30 hari melebihi kebutuhan air yang dianjurkan, yaitu 150–200 mm per 30 hari. Kondisi ini menunjukkan potensi kelebihan air, genangan, atau banjir sehingga varietas yang lebih toleran terhadap rendaman lebih sesuai untuk digunakan.',
         ];
     }
 
@@ -462,7 +462,7 @@ class RekomendasiService
                 'estimasi_kekurangan_air' => 0,
                 'kelebihan_air' => 0,
                 'rumus' => 'Curah hujan berada pada rentang kebutuhan air 150–200 mm/30 hari',
-                'kesimpulan' => 'Total curah hujan 30 hari berada pada rentang kebutuhan air untuk tanaman padi, sehingga kebutuhan air pada periode tanam yang dipilih relatif tercukupi.',
+                'kesimpulan' => 'Total curah hujan 30 hari berada pada rentang kebutuhan air yang optimal untuk tanaman padi, sehingga kebutuhan air pada periode ini relatif tercukupi.',
                 'saran' => 'Tetap lakukan pemantauan kondisi lahan dan ketersediaan air secara berkala.',
             ];
         }
