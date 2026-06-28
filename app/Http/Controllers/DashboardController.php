@@ -57,8 +57,10 @@ class DashboardController extends Controller
             $fase = 'Vegetatif Akhir';
         } elseif ($umur <= 90) {
             $fase = 'Generatif';
-        } else {
+        } elseif ($umur <= 120) {
             $fase = 'Pematangan';
+        } else {
+            $fase = 'Periode Pascapanen';
         }
 
         if ($data->curah_hujan >= 50) {

@@ -237,7 +237,8 @@
                 @if($fase == 'Vegetatif Awal') text-green-500
                 @elseif($fase == 'Vegetatif Akhir') text-blue-500
                 @elseif($fase == 'Generatif') text-yellow-500
-                @else text-red-500
+                @elseif($fase == 'Pematangan') text-red-500
+                @else text-slate-600
                 @endif">
                 {{ $fase }}
             </span>
