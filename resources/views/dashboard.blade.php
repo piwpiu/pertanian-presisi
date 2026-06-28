@@ -475,7 +475,7 @@
                 <li>{{ $hujanOk ? '✓' : '✗' }} {{ $alasanHujan }}</li>
             </ul>
 
-            <p class="mt-4 font-semibold text-slate-900">Saran pertanian</p>
+            <p class="mt-4 font-semibold text-slate-900">Saran</p>
             <p class="mt-1 text-sm leading-relaxed text-slate-700">
                 {{ $saranDetail }}
             </p>
