@@ -923,6 +923,20 @@
 <!-- Rekomendasi Varietas Padi -->
 @if(!empty($rekomendasiVarietas))
 @php
+    $isHistorical = $isHistorical ?? false;
+    $judulVarietasPadi = $isHistorical ? 'Evaluasi Kesesuaian Varietas Padi' : 'Rekomendasi Varietas Padi';
+    $labelAksiVarietas = $isHistorical ? 'Evaluasi' : 'Rekomendasi';
+    $labelDetailVarietas = $isHistorical ? 'Lihat detail evaluasi varietas' : 'Lihat detail rekomendasi varietas';
+    $labelVarietasUtama = $isHistorical
+        ? '3 varietas utama yang dinilai sesuai:'
+        : '3 varietas utama yang direkomendasikan:';
+    $teksKeteranganVarietasUtama = $isHistorical
+        ? 'Varietas utama yang dinilai sesuai berdasarkan kondisi iklim pada periode ini.'
+        : 'Rekomendasi varietas utama berdasarkan kondisi iklim pada periode ini.';
+    $teksSumberVarietas = $isHistorical
+        ? 'Evaluasi varietas ini didasarkan pada total curah hujan selama 30 hari dan data Kalender Tanam Bogor.'
+        : 'Rekomendasi varietas ini didasarkan pada total curah hujan selama 30 hari dan data Kalender Tanam Bogor.';
+
     $varietasIcon = match($rekomendasiVarietas['kategori']) {
         'Potensi Kekeringan' => 'fa-sun text-orange-600',
         'Kondisi Air Cukup' => 'fa-droplet text-green-600',
@@ -972,21 +986,37 @@
     }
 
     if (!$rekomendasiVarietas['valid']) {
-        $teksRekomendasiVarietas = "Rekomendasi varietas pada tanggal {$tanggalTanamVarietas} belum dapat ditentukan karena data iklim 30 hari belum lengkap.";
+        $teksRekomendasiVarietas = $isHistorical
+            ? "Evaluasi kesesuaian varietas pada tanggal {$tanggalTanamVarietas} belum dapat ditentukan karena data iklim 30 hari belum lengkap."
+            : "Rekomendasi varietas pada tanggal {$tanggalTanamVarietas} belum dapat ditentukan karena data iklim 30 hari belum lengkap.";
     } else {
-        $teksRekomendasiVarietas = match($rekomendasiVarietas['kategori']) {
-            'Potensi Kekeringan' =>
-                "Curah hujan 30 hari dari tanggal {$tanggalTanamVarietas} berada di bawah kebutuhan air untuk tanaman padi, sehingga varietas yang disarankan adalah {$teksVarietasUtama}.",
+        $teksRekomendasiVarietas = $isHistorical
+            ? match($rekomendasiVarietas['kategori']) {
+                'Potensi Kekeringan' =>
+                    "Curah hujan 30 hari dari tanggal {$tanggalTanamVarietas} berada di bawah kebutuhan air untuk tanaman padi. Berdasarkan kondisi iklim pada periode tersebut, varietas berikut dinilai sesuai sebagai pilihan varietas: {$teksVarietasUtama}.",
 
-            'Kondisi Air Cukup' =>
-                "Curah hujan 30 hari dari tanggal {$tanggalTanamVarietas} berada pada rentang optimal untuk kebutuhan air pada tanaman padi, sehingga varietas yang dapat dipertimbangkan adalah {$teksVarietasUtama}.",
+                'Kondisi Air Cukup' =>
+                    "Curah hujan 30 hari dari tanggal {$tanggalTanamVarietas} berada pada rentang optimal untuk kebutuhan air tanaman padi. Berdasarkan kondisi iklim pada periode tersebut, varietas berikut dinilai sesuai sebagai pilihan varietas: {$teksVarietasUtama}.",
 
-            'Potensi Banjir atau Genangan' =>
-                "Curah hujan 30 hari dari tanggal {$tanggalTanamVarietas} melebihi kebutuhan air untuk tanaman padi, sehingga varietas yang disarankan adalah {$teksVarietasUtama}.",
+                'Potensi Banjir atau Genangan' =>
+                    "Curah hujan 30 hari dari tanggal {$tanggalTanamVarietas} melebihi kebutuhan air untuk tanaman padi. Berdasarkan kondisi iklim pada periode tersebut, varietas berikut dinilai sesuai sebagai pilihan varietas: {$teksVarietasUtama}.",
 
-            default =>
-                "Rekomendasi varietas pada tanggal {$tanggalTanamVarietas} belum dapat ditentukan.",
-        };
+                default =>
+                    "Evaluasi kesesuaian varietas pada tanggal {$tanggalTanamVarietas} belum dapat ditentukan.",
+            }
+            : match($rekomendasiVarietas['kategori']) {
+                'Potensi Kekeringan' =>
+                    "Curah hujan 30 hari dari tanggal {$tanggalTanamVarietas} berada di bawah kebutuhan air untuk tanaman padi, sehingga varietas yang disarankan adalah {$teksVarietasUtama}.",
+
+                'Kondisi Air Cukup' =>
+                    "Curah hujan 30 hari dari tanggal {$tanggalTanamVarietas} berada pada rentang optimal untuk kebutuhan air pada tanaman padi, sehingga varietas yang dapat dipertimbangkan adalah {$teksVarietasUtama}.",
+
+                'Potensi Banjir atau Genangan' =>
+                    "Curah hujan 30 hari dari tanggal {$tanggalTanamVarietas} melebihi kebutuhan air untuk tanaman padi, sehingga varietas yang disarankan adalah {$teksVarietasUtama}.",
+
+                default =>
+                    "Rekomendasi varietas pada tanggal {$tanggalTanamVarietas} belum dapat ditentukan.",
+            };
     }
 
     $sumberVarietas = [];
@@ -1013,7 +1043,7 @@
 
             <div class="flex-1">
                 <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Rekomendasi Varietas Padi
+                    {{ $judulVarietasPadi }}
                 </p>
 
                 <h2 class="mt-1 text-2xl font-bold text-slate-900">
@@ -1047,7 +1077,7 @@
 
                                 <div>
                                     <p class="text-xs font-semibold uppercase text-slate-500">
-                                        Rekomendasi
+                                        {{ $labelAksiVarietas }}
                                     </p>
 
                                     <p class="mt-1 text-sm font-semibold leading-relaxed text-slate-800">
@@ -1062,7 +1092,7 @@
                 @if($rekomendasiVarietas['valid'])
                     <div class="mt-5">
                         <p class="text-sm font-semibold text-slate-900">
-                            3 varietas utama yang direkomendasikan:
+                            {{ $labelVarietasUtama }}
                         </p>
 
                         <div class="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3">
@@ -1078,7 +1108,7 @@
                                                 {{ $namaVarietas }}
                                             </p>
                                             <p class="mt-1 text-xs text-slate-500">
-                                                Rekomendasi varietas utama berdasarkan kondisi iklim pada periode ini.
+                                                {{ $teksKeteranganVarietasUtama }}
                                             </p>
                                         </div>
                                     </div>
@@ -1088,7 +1118,7 @@
                     </div>
                 @else
                     <div class="mt-4 rounded-xl border border-yellow-200 bg-yellow-50 p-4 text-sm text-yellow-800">
-                        Rekomendasi varietas belum dapat ditentukan karena data iklim 30 hari belum lengkap.
+                        {{ $isHistorical ? 'Evaluasi kesesuaian varietas belum dapat ditentukan karena data iklim 30 hari belum lengkap.' : 'Rekomendasi varietas belum dapat ditentukan karena data iklim 30 hari belum lengkap.' }}
                     </div>
                 @endif
             </div>
@@ -1097,7 +1127,7 @@
 
     <button onclick="toggleAccordion(this)" class="w-full border-t border-slate-200 px-6 py-3 flex items-center justify-between text-left hover:bg-slate-50 transition">
         <span class="text-sm font-semibold text-slate-700">
-            Lihat detail rekomendasi varietas
+            {{ $labelDetailVarietas }}
         </span>
         <i class="fa-solid fa-chevron-down accordion-icon text-slate-400 transition-transform transform"></i>
     </button>
@@ -1105,7 +1135,7 @@
     <div class="accordion-content hidden border-t border-slate-200 bg-slate-50 p-6">
         <div class="rounded-xl border border-slate-200 bg-white p-4">
             <p class="font-semibold text-slate-900">
-                Penjelasan Rekomendasi
+                Penjelasan {{ $labelAksiVarietas }}
             </p>
 
             <p class="mt-2 text-sm leading-relaxed text-slate-700">
@@ -1143,7 +1173,7 @@
             @endif
 
             <p class="mt-2 text-xs text-slate-500">
-                Rekomendasi varietas ini didasarkan pada total curah hujan selama 30 hari dan data Kalender Tanam Bogor.
+                {{ $teksSumberVarietas }}
             </p>
         </div>
     </div>
