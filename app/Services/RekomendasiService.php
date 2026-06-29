@@ -407,7 +407,7 @@ class RekomendasiService
                 'jenis' => 'Periode Kering',
                 'tingkat' => 'Waspada',
                 'pesan' => "Waspada periode kering diprediksi terjadi pada tanggal {$mulai} sampai {$selesai} selama {$periodeKering['durasi']} hari berturut-turut tanpa hujan.",
-                'saran' => 'Disarankan menyiapkan sumber air atau irigasi tambahan untuk menjaga kebutuhan air tanaman padi.',
+                'saran' => 'Disarankan menyiapkan sumber air atau irigasi tambahan untuk menjaga kebutuhan air pada tanaman padi.',
             ];
         }
 
@@ -448,7 +448,7 @@ class RekomendasiService
                 'kelebihan_air' => 0,
                 'rumus' => "{$kebutuhanMinimum} - {$totalCurahHujan} = {$estimasiKekuranganAir} mm",
                 'kesimpulan' => "Total curah hujan 30 hari masih berada di bawah kebutuhan minimum air untuk tanaman padi. Diperkirakan terdapat kekurangan air sekitar {$estimasiKekuranganAir} mm selama periode yang dipilih.",
-                'saran' => 'Siapkan sumber air atau irigasi tambahan untuk membantu menjaga ketersediaan air pada fase awal pertumbuhan padi.',
+                'saran' => 'Siapkan sumber air atau irigasi tambahan untuk membantu menjaga ketersediaan air pada periode yang dipilih.',
             ];
         }
 
