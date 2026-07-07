@@ -274,7 +274,7 @@
         </button>
         <div class="accordion-content hidden px-6 py-4 bg-gray-50 border-t border-gray-200">
             <p class="text-sm text-gray-700 leading-relaxed">
-                <strong>Suhu udara</strong> adalah ukuran derajat panas atau dingin di sekitar tanaman. Suhu optimal untuk padi berkisar <strong>24 – 32°C</strong>. Suhu yang terlalu tinggi dapat meningkatkan penguapan serta menurunkan produktivitas tanaman, sementara suhu terlalu rendah dapat menghambat pertumbuhan vegetatif.
+                <strong>Suhu udara</strong> adalah ukuran derajat panas atau dingin di sekitar tanaman. Suhu optimal untuk padi berkisar <strong>22 – 30°C</strong>. Suhu yang terlalu tinggi dapat meningkatkan penguapan serta menurunkan produktivitas tanaman, sementara suhu terlalu rendah dapat menghambat pertumbuhan vegetatif.
             </p>
         </div>
     </div>
@@ -318,7 +318,7 @@
         </button>
         <div class="accordion-content hidden px-6 py-4 bg-gray-50 border-t border-gray-200">
             <p class="text-sm text-gray-700 leading-relaxed">
-                <strong>Kelembaban udara</strong> adalah persentase uap air di udara. Untuk tanaman padi, kelembaban relatif sekitar <strong>60 – 90%</strong> tergolong ideal. Kelembaban yang terlalu rendah dapat menyebabkan tanaman kehilangan air lebih cepat, sedangkan kelembaban yang terlalu tinggi dapat meningkatkan risiko penyakit.
+                <strong>Kelembaban udara</strong> adalah persentase uap air di udara. Untuk tanaman padi, kelembaban relatif sekitar <strong>63 – 83%</strong> tergolong ideal. Kelembaban yang terlalu rendah dapat menyebabkan tanaman kehilangan air lebih cepat, sedangkan kelembaban yang terlalu tinggi dapat meningkatkan risiko penyakit.
             </p>
         </div>
     </div>
@@ -374,7 +374,7 @@
 
                 <p class="mt-2 text-sm leading-relaxed text-slate-600">
                     File unduhan berisi ringkasan tanggal tanam, informasi iklim,
-                    rekomendasi tanam, estimasi kebutuhan air, dan rekomendasi varietas padi.
+                    {{ ($isHistorical ?? false) ? 'evaluasi kondisi tanam, ketersediaan air, dan kesesuaian varietas padi.' : 'rekomendasi tanam, estimasi kebutuhan air, dan rekomendasi varietas padi.' }}
                 </p>
             </div>
 
@@ -397,9 +397,9 @@
     $kelembaban = $rekomendasiIklim['rata_kelembaban'];
     $hujan = $rekomendasiIklim['total_curah_hujan'];
 
-    $suhuOk = $suhu !== null && $suhu >= 24 && $suhu <= 32;
-    $kelembabanOk = $kelembaban !== null && $kelembaban >= 60 && $kelembaban <= 90;
-    $hujanOk = $hujan !== null && $hujan >= 150 && $hujan <= 200;
+    $suhuOk = $suhu !== null && $suhu >= 22 && $suhu <= 30;
+    $kelembabanOk = $kelembaban !== null && $kelembaban >= 63 && $kelembaban <= 83;
+    $hujanOk = $hujan !== null && $hujan >= 600 && $hujan <= 800;
 
     $tanggalTanamLabel = \Carbon\Carbon::parse($tanggalTanam)->format('d M Y');
 
@@ -413,9 +413,9 @@
         $parameterWaspada[] = 'kelembaban belum berada pada rentang optimal';
     }
 
-    if (!$hujanOk && $hujan !== null && $hujan < 150) {
+    if (!$hujanOk && $hujan !== null && $hujan < 600) {
         $parameterWaspada[] = 'curah hujan yang masih rendah';
-    } elseif (!$hujanOk && $hujan !== null && $hujan > 200) {
+    } elseif (!$hujanOk && $hujan !== null && $hujan > 800) {
         $parameterWaspada[] = 'curah hujan yang terlalu tinggi';
     }
 
@@ -455,66 +455,110 @@
         default => 'fa-circle-info text-slate-600',
     };
 
-    $kesimpulan = match($rekomendasiIklim['status']) {
-        'Direkomendasikan' =>
-            'Kondisi iklim selama 30 hari mendukung untuk memulai tanam padi.',
+    $labelDetailTanam = $isHistorical ? 'Lihat detail evaluasi kondisi tanam' : 'Lihat detail perhitungan rekomendasi';
+    $labelSaranTanam = $isHistorical ? 'Catatan Evaluasi' : 'Saran';
 
-        'Direkomendasikan dengan Waspada' =>
-            "Tanam masih dapat dipertimbangkan, tetapi terdapat kondisi iklim yang perlu diwaspadai, yaitu {$teksWaspada}.",
+    $kesimpulan = $isHistorical
+        ? match($statusTanamAsli) {
+            'Direkomendasikan' =>
+                'Berdasarkan hasil analisis selama 120 hari, kondisi iklim pada periode tersebut dinilai sesuai untuk budidaya padi.',
 
-        'Tidak Direkomendasikan' =>
-            "Kondisi iklim selama 30 hari belum mendukung untuk memulai tanam padi karena {$teksWaspada}.",
+            'Direkomendasikan dengan Waspada', 'Perlu Waspada' =>
+                "Berdasarkan hasil analisis selama 120 hari, kondisi tanam pada periode tersebut masih tergolong cukup sesuai, namun terdapat faktor iklim yang perlu diperhatikan, yaitu {$teksWaspada}.",
 
-        default =>
-            'Data iklim 30 hari belum lengkap untuk menentukan rekomendasi.',
-    };
+            'Tidak Direkomendasikan' =>
+                "Berdasarkan hasil analisis selama 120 hari, kondisi tanam pada periode tersebut dinilai kurang sesuai karena {$teksWaspada}.",
 
-    $kesimpulanDetail = match($rekomendasiIklim['status']) {
-        'Direkomendasikan' =>
-            'Berdasarkan hasil analisis selama 30 hari, suhu, kelembaban, dan curah hujan berada pada rentang yang mendukung. Kondisi ini dapat dijadikan pertimbangan untuk memulai tanam padi.',
+            default =>
+                'Data iklim 120 hari belum lengkap untuk melakukan evaluasi kondisi tanam.',
+        }
+        : match($statusTanamAsli) {
+            'Direkomendasikan' =>
+                'Kondisi iklim selama 120 hari mendukung untuk memulai tanam padi.',
 
-        'Direkomendasikan dengan Waspada' =>
-            "Berdasarkan hasil analisis selama 30 hari, sebagian kondisi iklim sudah mendukung. Namun, terdapat kondisi yang perlu diperhatikan, yaitu {$teksWaspada}.",
+            'Direkomendasikan dengan Waspada', 'Perlu Waspada' =>
+                "Tanam pada periode ini masih dapat dipertimbangkan, tetapi terdapat kondisi iklim yang perlu diwaspadai, yaitu {$teksWaspada}.",
 
-        'Tidak Direkomendasikan' =>
-            "Berdasarkan hasil analisis selama 30 hari, kondisi iklim belum cukup mendukung karena {$teksWaspada}. Kondisi tersebut dapat meningkatkan risiko gangguan pada periode pertumbuhan padi.",
+            'Tidak Direkomendasikan' =>
+                "Kondisi iklim selama 120 hari belum mendukung untuk memulai tanam padi karena {$teksWaspada}.",
 
-        default =>
-            'Data iklim selama 30 hari belum lengkap sehingga rekomendasi belum dapat dihitung secara penuh.',
-    };
+            default =>
+                'Data iklim 120 hari belum lengkap untuk menentukan rekomendasi.',
+        };
 
-    $saranDetail = match($rekomendasiIklim['status']) {
-        'Direkomendasikan' =>
-            "Tanam pada tanggal {$tanggalTanamLabel} dapat dipertimbangkan karena kondisi iklim selama 30 hari berada pada rentang yang mendukung. Petani tetap disarankan melakukan pemantauan rutin terhadap kondisi lahan.",
+    $kesimpulanDetail = $isHistorical
+        ? match($statusTanamAsli) {
+            'Direkomendasikan' =>
+                'Berdasarkan hasil analisis selama 120 hari, suhu, kelembaban, dan curah hujan pada periode tersebut berada pada rentang yang mendukung. Kondisi ini menunjukkan kesesuaian iklim untuk budidaya padi.',
 
-        'Direkomendasikan dengan Waspada' =>
-            "Tanam pada tanggal {$tanggalTanamLabel} masih dapat dipertimbangkan, tetapi perlu dilakukan antisipasi terhadap {$teksWaspada}. Pastikan pengelolaan air, drainase, atau irigasi disiapkan sesuai kondisi lahan.",
+            'Direkomendasikan dengan Waspada', 'Perlu Waspada' =>
+                "Berdasarkan hasil analisis selama 120 hari, sebagian kondisi iklim pada periode tersebut sudah mendukung. Namun, terdapat kondisi yang perlu diperhatikan, yaitu {$teksWaspada}.",
 
-        'Tidak Direkomendasikan' =>
-            "Tanam pada tanggal {$tanggalTanamLabel} belum disarankan karena {$teksWaspada}. Sebaiknya menunda waktu tanam atau menunggu periode dengan kondisi iklim yang lebih sesuai.",
+            'Tidak Direkomendasikan' =>
+                "Berdasarkan hasil analisis selama 120 hari, kondisi iklim pada periode tersebut belum cukup mendukung karena {$teksWaspada}. Kondisi tersebut menunjukkan risiko yang lebih tinggi terhadap budidaya padi.",
 
-        default =>
-            'Rekomendasi belum dapat diberikan karena data iklim 30 hari belum lengkap.',
-    };
+            default =>
+                'Data iklim selama 120 hari belum lengkap sehingga evaluasi belum dapat dihitung secara penuh.',
+        }
+        : match($statusTanamAsli) {
+            'Direkomendasikan' =>
+                'Berdasarkan hasil analisis selama 120 hari, suhu, kelembaban, dan curah hujan berada pada rentang yang mendukung. Kondisi ini dapat dijadikan pertimbangan untuk memulai tanam padi.',
+
+            'Direkomendasikan dengan Waspada', 'Perlu Waspada' =>
+                "Berdasarkan hasil analisis selama 120 hari, sebagian kondisi iklim sudah mendukung. Namun, terdapat kondisi yang perlu diperhatikan, yaitu {$teksWaspada}.",
+
+            'Tidak Direkomendasikan' =>
+                "Berdasarkan hasil analisis selama 120 hari, kondisi iklim belum cukup mendukung karena {$teksWaspada}. Kondisi tersebut dapat meningkatkan risiko gangguan pada periode pertumbuhan padi.",
+
+            default =>
+                'Data iklim selama 120 hari belum lengkap sehingga rekomendasi belum dapat dihitung secara penuh.',
+        };
+
+    $saranDetail = $isHistorical
+        ? match($statusTanamAsli) {
+            'Direkomendasikan' =>
+                'Pada periode tersebut, kondisi iklim secara umum mendukung budidaya padi. Pemantauan kondisi lahan tetap diperlukan untuk menjaga pertumbuhan tanaman padi.',
+
+            'Direkomendasikan dengan Waspada', 'Perlu Waspada' =>
+                "Pada periode tersebut, kondisi iklim masih cukup mendukung, namun diperlukan perhatian terhadap {$teksWaspada}. Pengelolaan air, drainase, atau irigasi menjadi faktor penting pada kondisi tersebut.",
+
+            'Tidak Direkomendasikan' =>
+                "Pada periode tersebut, kondisi iklim dinilai kurang sesuai karena {$teksWaspada}. Kondisi ini menunjukkan bahwa periode tersebut memiliki risiko yang lebih tinggi untuk budidaya padi.",
+
+            default =>
+                'Evaluasi belum dapat diberikan karena data iklim 120 hari belum lengkap.',
+        }
+        : match($statusTanamAsli) {
+            'Direkomendasikan' =>
+                "Tanam pada tanggal {$tanggalTanamLabel} dapat dipertimbangkan karena kondisi iklim selama 120 hari berada pada rentang yang mendukung. Petani tetap disarankan melakukan pemantauan rutin terhadap kondisi lahan.",
+
+            'Direkomendasikan dengan Waspada', 'Perlu Waspada' =>
+                "Tanam pada tanggal {$tanggalTanamLabel} masih dapat dipertimbangkan, tetapi perlu dilakukan antisipasi terhadap {$teksWaspada}. Pastikan pengelolaan air, drainase, atau irigasi disiapkan sesuai kondisi lahan.",
+
+            'Tidak Direkomendasikan' =>
+                "Tanam pada tanggal {$tanggalTanamLabel} belum disarankan karena {$teksWaspada}. Sebaiknya menunda waktu tanam atau menunggu periode dengan kondisi iklim yang lebih sesuai.",
+
+            default =>
+                'Rekomendasi belum dapat diberikan karena data iklim 120 hari belum lengkap.',
+        };
 
     $alasanSuhu = $suhuOk
-        ? "Suhu mendukung karena rata-rata suhu {$suhu}°C masih berada dalam rentang 24 – 32°C."
-        : "Suhu belum mendukung karena rata-rata suhu {$suhu}°C berada di luar rentang 24 – 32°C.";
+        ? "Suhu mendukung karena rata-rata suhu {$suhu}Â°C masih berada dalam rentang 22 â€“ 30Â°C."
+        : "Suhu belum mendukung karena rata-rata suhu {$suhu}Â°C berada di luar rentang 22 â€“ 30Â°C.";
 
     $alasanKelembaban = $kelembabanOk
-        ? "Kelembaban mendukung karena rata-rata kelembaban {$kelembaban}% masih berada dalam rentang 60 – 90%."
-        : "Kelembaban belum mendukung karena rata-rata kelembaban {$kelembaban}% berada di luar rentang 60 – 90%.";
+        ? "Kelembaban mendukung karena rata-rata kelembaban {$kelembaban}% masih berada dalam rentang 63 â€“ 83%."
+        : "Kelembaban belum mendukung karena rata-rata kelembaban {$kelembaban}% berada di luar rentang 63 â€“ 83%.";
 
     if ($hujanOk) {
-        $alasanHujan = "Curah hujan mendukung karena total curah hujan {$hujan} mm selama 30 hari berada dalam rentang 150 – 200 mm.";
-    } elseif ($hujan !== null && $hujan < 150) {
-        $alasanHujan = "Curah hujan belum mendukung karena total curah hujan {$hujan} mm selama 30 hari masih lebih rendah dari kebutuhan air padi 150 mm. Kondisi ini dapat menunjukkan potensi kekurangan air.";
-    } elseif ($hujan !== null && $hujan > 200) {
-        $alasanHujan = "Curah hujan belum mendukung karena total curah hujan {$hujan} mm selama 30 hari melebihi kebutuhan air padi 200 mm. Kondisi ini dapat meningkatkan risiko genangan.";
+        $alasanHujan = "Curah hujan mendukung karena total curah hujan {$hujan} mm selama 120 hari berada dalam rentang 600 â€“ 800 mm.";
+    } elseif ($hujan !== null && $hujan < 600) {
+        $alasanHujan = "Curah hujan belum mendukung karena total curah hujan {$hujan} mm selama 120 hari masih lebih rendah dari kebutuhan air padi 600 mm. Kondisi ini dapat menunjukkan potensi kekurangan air.";
+    } elseif ($hujan !== null && $hujan > 800) {
+        $alasanHujan = "Curah hujan belum mendukung karena total curah hujan {$hujan} mm selama 120 hari melebihi kebutuhan air padi 800 mm. Kondisi ini dapat meningkatkan risiko genangan.";
     } else {
         $alasanHujan = "Data curah hujan belum tersedia.";
     }
-
     $sumberAnalisis = [];
 
     if ($rekomendasiIklim['jumlah_aktual'] > 0) {
@@ -557,9 +601,9 @@
 
                 @if($rekomendasiIklim['skor'] !== null)
                     <p class="mt-2 text-sm font-semibold text-slate-700">
-                        {{ $rekomendasiIklim['skor'] }} dari 3 parameter iklim berada pada rentang mendukung.
+                        Skor Kelayakan: {{ $rekomendasiIklim['skor_fuzzy'] ?? $rekomendasiIklim['skor'] }}/100
 
-                        @if($rekomendasiIklim['skor'] === 3 && !empty($rekomendasiIklim['risiko_iklim']))
+                        @if(($rekomendasiIklim['skor_fuzzy'] ?? $rekomendasiIklim['skor']) >= 80 && !empty($rekomendasiIklim['risiko_iklim']))
                             Namun terdapat {{ count($rekomendasiIklim['risiko_iklim']) }} risiko iklim yang perlu diwaspadai.
                         @endif
                     </p>
@@ -570,7 +614,7 @@
 
     <button onclick="toggleAccordion(this)" class="w-full border-t border-slate-200 px-6 py-3 flex items-center justify-between text-left hover:bg-slate-50 transition">
         <span class="text-sm font-semibold text-slate-700">
-            Lihat detail perhitungan rekomendasi
+            {{ $labelDetailTanam }}
         </span>
         <i class="fa-solid fa-chevron-down accordion-icon text-slate-400 transition-transform transform"></i>
     </button>
@@ -578,7 +622,7 @@
     <div class="accordion-content hidden border-t border-slate-200 bg-slate-50 p-6">
         @if(!$rekomendasiIklim['valid'])
             <div class="mb-4 rounded-xl border border-yellow-200 bg-yellow-50 p-4 text-sm text-yellow-800">
-                <p class="font-semibold">Data iklim 30 hari belum lengkap.</p>
+                <p class="font-semibold">Data iklim 120 hari belum lengkap.</p>
                 <p>{{ $rekomendasiIklim['alasan'] }}</p>
             </div>
         @endif
@@ -591,7 +635,7 @@
                 <p class="mt-1 text-xl font-bold text-slate-900">
                     {{ $suhu !== null ? $suhu.' °C' : '-' }}
                 </p>
-                <p class="text-xs text-slate-600">Rentang optimal: 24 – 32°C</p>
+                <p class="text-xs text-slate-600">Rentang optimal: 22 – 30°C</p>
             </div>
 
             <div class="rounded-xl border p-4 {{ $kelembabanOk ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50' }}">
@@ -601,7 +645,7 @@
                 <p class="mt-1 text-xl font-bold text-slate-900">
                     {{ $kelembaban !== null ? $kelembaban.' %' : '-' }}
                 </p>
-                <p class="text-xs text-slate-600">Rentang optimal: 60 – 90%</p>
+                <p class="text-xs text-slate-600">Rentang optimal: 63 – 83%</p>
             </div>
 
             <div class="rounded-xl border p-4 {{ $hujanOk ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50' }}">
@@ -611,7 +655,7 @@
                 <p class="mt-1 text-xl font-bold text-slate-900">
                     {{ $hujan !== null ? $hujan.' mm' : '-' }}
                 </p>
-                <p class="text-xs text-slate-600">Rentang optimal: 150 – 200 mm/30 hari</p>
+                <p class="text-xs text-slate-600">Rentang optimal: 600 – 800 mm/120 hari</p>
             </div>
         </div>
 
@@ -648,12 +692,10 @@
 
             <p class="mt-4 font-semibold text-slate-900">Alasan teknis</p>
             <ul class="mt-2 space-y-2 text-sm leading-relaxed text-slate-700">
-                <li>{{ $suhuOk ? '✓' : '✗' }} {{ $alasanSuhu }}</li>
-                <li>{{ $kelembabanOk ? '✓' : '✗' }} {{ $alasanKelembaban }}</li>
-                <li>{{ $hujanOk ? '✓' : '✗' }} {{ $alasanHujan }}</li>
+                <li>{{ $rekomendasiIklim['alasan_fuzzy'] ?? $rekomendasiIklim['alasan'] }}</li>
             </ul>
 
-            <p class="mt-4 font-semibold text-slate-900">Saran</p>
+            <p class="mt-4 font-semibold text-slate-900">{{ $labelSaranTanam }}</p>
             <p class="mt-1 text-sm leading-relaxed text-slate-700">
                 {{ $saranDetail }}
             </p>
@@ -666,17 +708,29 @@
 
                     <div class="mt-3 space-y-3">
                         @foreach($rekomendasiIklim['risiko_iklim'] as $risikoItem)
+                            @php
+                                $pesanRisiko = $risikoItem['pesan'];
+                                $saranRisiko = $risikoItem['saran'];
+
+                                if ($isHistorical && ($risikoItem['jenis'] ?? '') === 'Hujan Lebat') {
+                                    $pesanRisiko = str_replace('diprediksi terjadi', 'terjadi', $pesanRisiko);
+                                    $saranRisiko = 'Pada kondisi tersebut, pengelolaan saluran drainase diperlukan untuk mengurangi risiko genangan.';
+                                } elseif ($isHistorical && ($risikoItem['jenis'] ?? '') === 'Periode Kering') {
+                                    $pesanRisiko = str_replace('diprediksi terjadi', 'terjadi', $pesanRisiko);
+                                    $saranRisiko = 'Pada kondisi tersebut, ketersediaan sumber air atau irigasi tambahan diperlukan untuk menjaga kebutuhan air pada tanaman padi.';
+                                }
+                            @endphp
                             <div class="rounded-lg border border-yellow-200 bg-white p-3">
                                 <p class="text-sm font-bold text-yellow-800">
-                                    {{ $risikoItem['jenis'] }} - {{ $risikoItem['tingkat'] }}
+                                    {{ $risikoItem['jenis'] }} – {{ $risikoItem['tingkat'] }}
                                 </p>
 
                                 <p class="mt-1 text-sm leading-relaxed text-slate-700">
-                                    {{ $risikoItem['pesan'] }}
+                                    {{ $pesanRisiko }}
                                 </p>
 
                                 <p class="mt-1 text-sm leading-relaxed text-slate-700">
-                                    {{ $risikoItem['saran'] }}
+                                    {{ $saranRisiko }}
                                 </p>
                             </div>
                         @endforeach
@@ -697,32 +751,35 @@
 <!-- Estimasi Kebutuhan Air -->
 @if(!empty($rekomendasiIklim['kebutuhan_air']))
 @php
+    $isHistorical = $isHistorical ?? false;
     $air = $rekomendasiIklim['kebutuhan_air'];
     $statusAir = $air['status'] ?? 'Belum Dapat Dihitung';
+    $judulAir = $isHistorical ? 'Evaluasi Ketersediaan Air' : 'Estimasi Kebutuhan Air';
+    $labelDetailAir = $isHistorical ? 'Lihat detail evaluasi ketersediaan air' : 'Lihat detail estimasi kebutuhan air';
 
     $airIcon = match($statusAir) {
-        'Kebutuhan Air Kurang' => 'fa-seedling text-orange-600',
-        'Kebutuhan Air Tercukupi' => 'fa-circle-check text-green-600',
-        'Kelebihan Air' => 'fa-cloud-rain text-blue-600',
+        'Kebutuhan Air Kurang', 'Kekurangan Air' => 'fa-seedling text-orange-600',
+        'Kebutuhan Air Tercukupi', 'Air Tercukupi' => 'fa-circle-check text-green-600',
+        'Kelebihan Air', 'Potensi Air Berlebih' => 'fa-cloud-rain text-blue-600',
         default => 'fa-circle-info text-slate-600',
     };
 
     $airTheme = match($statusAir) {
-        'Kebutuhan Air Kurang' => [
+        'Kebutuhan Air Kurang', 'Kekurangan Air' => [
             'iconBg' => 'bg-orange-100',
             'bg' => 'bg-orange-50',
             'border' => 'border-orange-100',
             'text' => 'text-orange-700',
             'ring' => 'ring-orange-100',
         ],
-        'Kebutuhan Air Tercukupi' => [
+        'Kebutuhan Air Tercukupi', 'Air Tercukupi' => [
             'iconBg' => 'bg-green-100',
             'bg' => 'bg-green-50',
             'border' => 'border-green-100',
             'text' => 'text-green-700',
             'ring' => 'ring-green-100',
         ],
-        'Kelebihan Air' => [
+        'Kelebihan Air', 'Potensi Air Berlebih' => [
             'iconBg' => 'bg-blue-100',
             'bg' => 'bg-blue-50',
             'border' => 'border-blue-100',
@@ -738,20 +795,49 @@
         ],
     };
 
-    $labelSelisihAir = $statusAir === 'Kelebihan Air'
+    $labelSelisihAir = in_array($statusAir, ['Kelebihan Air', 'Potensi Air Berlebih'], true)
         ? 'Kelebihan Air'
         : 'Estimasi Kekurangan Air';
 
-    $nilaiSelisihAir = $statusAir === 'Kelebihan Air'
+    $nilaiSelisihAir = in_array($statusAir, ['Kelebihan Air', 'Potensi Air Berlebih'], true)
         ? ($air['kelebihan_air'] ?? null)
         : ($air['estimasi_kekurangan_air'] ?? null);
 
-    $ringkasanAir = match($statusAir) {
-        'Kebutuhan Air Kurang' => 'Curah hujan belum mencukupi kebutuhan minimum air untuk tanaman padi, sehingga diperlukan perhatian terhadap ketersediaan air.',
-        'Kebutuhan Air Tercukupi' => 'Curah hujan berada pada rentang optimal kebutuhan air untuk tanaman padi, sehingga kondisi air pada awal tanam relatif mencukupi.',
-        'Kelebihan Air' => 'Curah hujan melebihi kebutuhan air untuk tanaman padi, sehingga perlu memperhatikan potensi genangan dan drainase lahan.',
-        default => 'Data curah hujan belum lengkap untuk menghitung estimasi kebutuhan air.',
-    };
+    $ringkasanAir = $isHistorical
+        ? match($statusAir) {
+            'Kebutuhan Air Kurang', 'Kekurangan Air' => 'Curah hujan pada periode tersebut belum mencukupi kebutuhan minimum air untuk tanaman padi, sehingga ketersediaan air menjadi faktor yang perlu diperhatikan.',
+            'Kebutuhan Air Tercukupi', 'Air Tercukupi' => 'Curah hujan pada periode tersebut berada pada rentang optimal kebutuhan air untuk tanaman padi, sehingga ketersediaan air dinilai relatif mencukupi.',
+            'Kelebihan Air', 'Potensi Air Berlebih' => 'Curah hujan pada periode tersebut melebihi kebutuhan air untuk tanaman padi, sehingga drainase lahan menjadi faktor penting untuk mengurangi risiko genangan.',
+            default => 'Data curah hujan belum lengkap untuk mengevaluasi ketersediaan air.',
+        }
+        : match($statusAir) {
+            'Kebutuhan Air Kurang', 'Kekurangan Air' => 'Curah hujan belum mencukupi kebutuhan minimum air untuk tanaman padi, sehingga diperlukan perhatian terhadap ketersediaan air.',
+            'Kebutuhan Air Tercukupi', 'Air Tercukupi' => 'Curah hujan berada pada rentang optimal kebutuhan air untuk tanaman padi, sehingga kondisi air pada awal tanam relatif mencukupi.',
+            'Kelebihan Air', 'Potensi Air Berlebih' => 'Curah hujan melebihi kebutuhan air untuk tanaman padi, sehingga perlu memperhatikan potensi genangan dan drainase lahan.',
+            default => 'Data curah hujan belum lengkap untuk menghitung estimasi kebutuhan air.',
+        };
+
+    $kesimpulanAir = $isHistorical
+        ? match($statusAir) {
+            'Kebutuhan Air Kurang', 'Kekurangan Air' =>
+                "Total curah hujan 120 hari pada periode tersebut berada di bawah kebutuhan minimum air untuk tanaman padi. Ketersediaan air perlu didukung dengan pengelolaan irigasi yang baik.",
+            'Kebutuhan Air Tercukupi', 'Air Tercukupi' =>
+                'Total curah hujan 120 hari pada periode tersebut berada pada rentang kebutuhan air yang optimal untuk tanaman padi, sehingga kebutuhan air dinilai relatif tercukupi.',
+            'Kelebihan Air', 'Potensi Air Berlebih' =>
+                "Total curah hujan 120 hari pada periode tersebut melebihi batas kebutuhan air untuk tanaman padi. Terdapat potensi kelebihan air sekitar {$nilaiSelisihAir} mm.",
+            default =>
+                'Evaluasi ketersediaan air belum dapat dilakukan karena data curah hujan 120 hari belum lengkap.',
+        }
+        : $air['kesimpulan'];
+
+    $catatanAir = $isHistorical
+        ? match($statusAir) {
+            'Kebutuhan Air Kurang', 'Kekurangan Air' => 'Pada periode tersebut, ketersediaan air perlu didukung dengan pengelolaan air dan irigasi yang baik.',
+            'Kebutuhan Air Tercukupi', 'Air Tercukupi' => 'Pada periode tersebut, pemantauan kondisi lahan dan ketersediaan air tetap menjadi bagian penting dalam budidaya padi.',
+            'Kelebihan Air', 'Potensi Air Berlebih' => 'Pada periode tersebut, drainase lahan menjadi faktor penting untuk mengurangi risiko genangan.',
+            default => 'Data klimatologi atau prediksi perlu dilengkapi agar evaluasi ketersediaan air dapat dilakukan.',
+        }
+        : ($air['saran'] ?? null);
 @endphp
 
 <div class="mt-6 overflow-hidden rounded-xl border border-slate-200 bg-white shadow">
@@ -763,7 +849,7 @@
 
             <div class="flex-1">
                 <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Estimasi Kebutuhan Air
+                    {{ $judulAir }}
                 </p>
 
                 <h2 class="mt-1 text-2xl font-bold text-slate-900">
@@ -791,7 +877,7 @@
     <button onclick="toggleAccordion(this)"
         class="w-full border-t border-slate-200 px-6 py-3 flex items-center justify-between text-left hover:bg-slate-50 transition">
         <span class="text-sm font-semibold text-slate-700">
-            Lihat detail estimasi kebutuhan air
+            {{ $labelDetailAir }}
         </span>
         <i class="fa-solid fa-chevron-down accordion-icon text-slate-400 transition-transform transform"></i>
     </button>
@@ -812,7 +898,7 @@
                             {{ $air['kebutuhan_minimum'] }} – {{ $air['kebutuhan_maksimum'] }} mm
                         </p>
                         <p class="text-xs text-slate-500">
-                            per 30 hari
+                            per 120 hari
                         </p>
                     </div>
                 </div>
@@ -832,7 +918,7 @@
                             {{ $air['total_curah_hujan'] !== null ? $air['total_curah_hujan'].' mm' : '-' }}
                         </p>
                         <p class="text-xs text-slate-500">
-                            hasil analisis 30 hari
+                            hasil analisis 120 hari
                         </p>
                     </div>
                 </div>
@@ -841,7 +927,7 @@
             <div class="rounded-xl border {{ $airTheme['border'] }} {{ $airTheme['bg'] }} p-4">
                 <div class="flex items-center gap-3">
                     <div class="flex h-10 w-10 items-center justify-center rounded-full {{ $airTheme['iconBg'] }} {{ $airTheme['text'] }}">
-                        <i class="fa-solid {{ $statusAir === 'Kelebihan Air' ? 'fa-cloud-rain' : 'fa-seedling' }}"></i>
+                        <i class="fa-solid {{ in_array($statusAir, ['Kelebihan Air', 'Potensi Air Berlebih'], true) ? 'fa-cloud-rain' : 'fa-seedling' }}"></i>
                     </div>
 
                     <div>
@@ -870,7 +956,7 @@
                         {{ $statusAir }}
                     </p>
                     <p class="mt-2 text-sm leading-relaxed text-slate-700">
-                        {{ $air['kesimpulan'] }}
+                        {{ $kesimpulanAir }}
                     </p>
                 </div>
             </div>
@@ -901,18 +987,18 @@
             <p class="mt-2 text-sm leading-relaxed text-slate-700">
                 Estimasi kebutuhan air dihitung menggunakan pendekatan sederhana
                 dengan membandingkan kebutuhan air tanaman padi sebesar
-                <b>150–200 mm per 30 hari</b>
+                <b>600-800 mm per 120 hari</b>
                 terhadap total curah hujan hasil analisis selama periode yang sama.
             </p>
         </div> --}}
 
-        @if(!empty($air['saran']))
+        @if(!empty($catatanAir))
             <div class="mt-4 rounded-xl border border-yellow-200 bg-yellow-50 p-4">
                 <p class="font-semibold text-yellow-800">
                     Catatan
                 </p>
                 <p class="mt-2 text-sm leading-relaxed text-slate-700">
-                    {{ $air['saran'] }}
+                    {{ $catatanAir }}
                 </p>
             </div>
         @endif
@@ -924,40 +1010,47 @@
 @if(!empty($rekomendasiVarietas))
 @php
     $isHistorical = $isHistorical ?? false;
+
     $judulVarietasPadi = $isHistorical ? 'Evaluasi Kesesuaian Varietas Padi' : 'Rekomendasi Varietas Padi';
     $labelAksiVarietas = $isHistorical ? 'Evaluasi' : 'Rekomendasi';
     $labelDetailVarietas = $isHistorical ? 'Lihat detail evaluasi varietas' : 'Lihat detail rekomendasi varietas';
     $labelVarietasUtama = $isHistorical
         ? '3 varietas utama yang dinilai sesuai:'
         : '3 varietas utama yang direkomendasikan:';
+
     $teksKeteranganVarietasUtama = $isHistorical
         ? 'Varietas utama yang dinilai sesuai berdasarkan kondisi iklim pada periode ini.'
         : 'Rekomendasi varietas utama berdasarkan kondisi iklim pada periode ini.';
+
     $teksSumberVarietas = $isHistorical
-        ? 'Evaluasi varietas ini didasarkan pada total curah hujan selama 30 hari dan data Kalender Tanam Bogor.'
-        : 'Rekomendasi varietas ini didasarkan pada total curah hujan selama 30 hari dan data Kalender Tanam Bogor.';
+        ? 'Evaluasi varietas ini didasarkan pada total curah hujan selama 120 hari dan data Kalender Tanam Bogor.'
+        : 'Rekomendasi varietas ini didasarkan pada total curah hujan selama 120 hari dan data Kalender Tanam Bogor.';
+
+    $tipeLahan = 'Sawah Irigasi';
+
+    $teksDisclaimerVarietas = 'Catatan: Sistem ini difokuskan pada analisis padi sawah irigasi berbasis data klimatologi tingkat stasiun cuaca. Hasil yang ditampilkan digunakan sebagai alat bantu pendukung keputusan dan tetap perlu mempertimbangkan kondisi aktual lahan, ketersediaan irigasi, drainase, tanah, varietas, hama penyakit, serta arahan penyuluh atau pakar pertanian.';
 
     $varietasIcon = match($rekomendasiVarietas['kategori']) {
-        'Potensi Kekeringan' => 'fa-sun text-orange-600',
-        'Kondisi Air Cukup' => 'fa-droplet text-green-600',
-        'Potensi Banjir atau Genangan' => 'fa-water text-blue-600',
+        'Potensi Kekeringan', 'Varietas Tahan Kekeringan' => 'fa-sun text-orange-600',
+        'Kondisi Air Cukup', 'Varietas Umum' => 'fa-droplet text-green-600',
+        'Potensi Banjir / Genangan', 'Varietas Toleran Genangan' => 'fa-water text-blue-600',
         default => 'fa-circle-info text-slate-600',
     };
 
     $varietasTheme = match($rekomendasiVarietas['kategori']) {
-        'Potensi Kekeringan' => [
+        'Potensi Kekeringan', 'Varietas Tahan Kekeringan' => [
             'bg' => 'bg-orange-50',
             'border' => 'border-orange-100',
             'text' => 'text-orange-700',
             'iconBg' => 'bg-orange-100',
         ],
-        'Kondisi Air Cukup' => [
+        'Kondisi Air Cukup', 'Varietas Umum' => [
             'bg' => 'bg-emerald-50',
             'border' => 'border-emerald-100',
             'text' => 'text-emerald-700',
             'iconBg' => 'bg-emerald-100',
         ],
-        'Potensi Banjir atau Genangan' => [
+        'Potensi Banjir / Genangan', 'Varietas Toleran Genangan' => [
             'bg' => 'bg-blue-50',
             'border' => 'border-blue-100',
             'text' => 'text-blue-700',
@@ -987,37 +1080,50 @@
 
     if (!$rekomendasiVarietas['valid']) {
         $teksRekomendasiVarietas = $isHistorical
-            ? "Evaluasi kesesuaian varietas pada tanggal {$tanggalTanamVarietas} belum dapat ditentukan karena data iklim 30 hari belum lengkap."
-            : "Rekomendasi varietas pada tanggal {$tanggalTanamVarietas} belum dapat ditentukan karena data iklim 30 hari belum lengkap.";
+            ? "Evaluasi kesesuaian varietas pada tanggal {$tanggalTanamVarietas} belum dapat ditentukan karena data iklim 120 hari belum lengkap."
+            : "Rekomendasi varietas pada tanggal {$tanggalTanamVarietas} belum dapat ditentukan karena data iklim 120 hari belum lengkap.";
     } else {
         $teksRekomendasiVarietas = $isHistorical
             ? match($rekomendasiVarietas['kategori']) {
-                'Potensi Kekeringan' =>
-                    "Curah hujan 30 hari dari tanggal {$tanggalTanamVarietas} berada di bawah kebutuhan air untuk tanaman padi. Berdasarkan kondisi iklim pada periode tersebut, varietas berikut dinilai sesuai sebagai pilihan varietas: {$teksVarietasUtama}.",
+                'Potensi Kekeringan', 'Varietas Tahan Kekeringan' =>
+                    "Curah hujan selama 120 hari dari tanggal {$tanggalTanamVarietas} berada di bawah kebutuhan air untuk tanaman padi sawah irigasi. Berdasarkan kondisi iklim pada periode tersebut, varietas berikut dinilai sesuai sebagai pilihan varietas: {$teksVarietasUtama}.",
 
-                'Kondisi Air Cukup' =>
-                    "Curah hujan 30 hari dari tanggal {$tanggalTanamVarietas} berada pada rentang optimal untuk kebutuhan air tanaman padi. Berdasarkan kondisi iklim pada periode tersebut, varietas berikut dinilai sesuai sebagai pilihan varietas: {$teksVarietasUtama}.",
+                'Kondisi Air Cukup', 'Varietas Umum' =>
+                    "Curah hujan selama 120 hari dari tanggal {$tanggalTanamVarietas} berada pada rentang optimal untuk kebutuhan air tanaman padi sawah irigasi. Berdasarkan kondisi iklim pada periode tersebut, varietas berikut dinilai sesuai sebagai pilihan varietas: {$teksVarietasUtama}.",
 
-                'Potensi Banjir atau Genangan' =>
-                    "Curah hujan 30 hari dari tanggal {$tanggalTanamVarietas} melebihi kebutuhan air untuk tanaman padi. Berdasarkan kondisi iklim pada periode tersebut, varietas berikut dinilai sesuai sebagai pilihan varietas: {$teksVarietasUtama}.",
+                'Potensi Banjir / Genangan', 'Varietas Toleran Genangan' =>
+                    "Curah hujan selama 120 hari dari tanggal {$tanggalTanamVarietas} melebihi kebutuhan air untuk tanaman padi sawah irigasi. Berdasarkan kondisi iklim pada periode tersebut, varietas berikut dinilai sesuai sebagai pilihan varietas: {$teksVarietasUtama}.",
 
                 default =>
                     "Evaluasi kesesuaian varietas pada tanggal {$tanggalTanamVarietas} belum dapat ditentukan.",
             }
             : match($rekomendasiVarietas['kategori']) {
-                'Potensi Kekeringan' =>
-                    "Curah hujan 30 hari dari tanggal {$tanggalTanamVarietas} berada di bawah kebutuhan air untuk tanaman padi, sehingga varietas yang disarankan adalah {$teksVarietasUtama}.",
+                'Potensi Kekeringan', 'Varietas Tahan Kekeringan' =>
+                    "Curah hujan 120 hari dari tanggal {$tanggalTanamVarietas} berada di bawah kebutuhan air untuk tanaman padi sawah irigasi, sehingga varietas yang disarankan adalah {$teksVarietasUtama}.",
 
-                'Kondisi Air Cukup' =>
-                    "Curah hujan 30 hari dari tanggal {$tanggalTanamVarietas} berada pada rentang optimal untuk kebutuhan air pada tanaman padi, sehingga varietas yang dapat dipertimbangkan adalah {$teksVarietasUtama}.",
+                'Kondisi Air Cukup', 'Varietas Umum' =>
+                    "Curah hujan 120 hari dari tanggal {$tanggalTanamVarietas} berada pada rentang optimal untuk kebutuhan air tanaman padi sawah irigasi, sehingga varietas yang dapat dipertimbangkan adalah {$teksVarietasUtama}.",
 
-                'Potensi Banjir atau Genangan' =>
-                    "Curah hujan 30 hari dari tanggal {$tanggalTanamVarietas} melebihi kebutuhan air untuk tanaman padi, sehingga varietas yang disarankan adalah {$teksVarietasUtama}.",
+                'Potensi Banjir / Genangan', 'Varietas Toleran Genangan' =>
+                    "Curah hujan 120 hari dari tanggal {$tanggalTanamVarietas} melebihi kebutuhan air untuk tanaman padi sawah irigasi, sehingga varietas yang disarankan adalah {$teksVarietasUtama}.",
 
                 default =>
                     "Rekomendasi varietas pada tanggal {$tanggalTanamVarietas} belum dapat ditentukan.",
             };
     }
+
+    $penjelasanVarietasDisplay = $isHistorical
+        ? match($rekomendasiVarietas['kategori']) {
+            'Potensi Kekeringan', 'Varietas Tahan Kekeringan' =>
+                'Total curah hujan selama 120 hari pada periode tersebut berada di bawah kebutuhan air padi sawah irigasi. Kondisi ini menunjukkan potensi kekurangan air, sehingga varietas yang lebih toleran terhadap kekeringan dinilai sesuai sebagai pilihan varietas.',
+            'Kondisi Air Cukup', 'Varietas Umum' =>
+                'Total curah hujan selama 120 hari pada periode tersebut berada pada rentang kebutuhan air padi sawah irigasi, yaitu 600-800 mm per 120 hari. Kondisi ini menunjukkan bahwa ketersediaan air relatif cukup untuk mendukung budidaya padi secara umum.',
+            'Potensi Banjir / Genangan', 'Varietas Toleran Genangan' =>
+                'Total curah hujan selama 120 hari pada periode tersebut melebihi kebutuhan air yang dianjurkan untuk padi sawah irigasi, yaitu 600-800 mm per 120 hari. Kondisi ini menunjukkan potensi kelebihan air, genangan, atau banjir, sehingga varietas yang lebih toleran terhadap rendaman dinilai sesuai sebagai pilihan varietas.',
+            default =>
+                'Evaluasi kesesuaian varietas belum dapat ditentukan karena data iklim pada periode tersebut belum lengkap.',
+        }
+        : $rekomendasiVarietas['penjelasan'];
 
     $sumberVarietas = [];
 
@@ -1051,9 +1157,14 @@
                 </h2>
 
                 <p class="mt-2 text-sm text-slate-600">
-                    Analisis curah hujan 30 hari:
+                    Analisis curah hujan 120 hari:
                     <b>{{ $rekomendasiVarietas['periode'] }}</b>
                 </p>
+
+                <div class="mt-3 inline-flex items-center gap-2 rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
+                    <i class="fa-solid fa-seedling"></i>
+                    Konteks lahan: {{ $tipeLahan }}
+                </div>
 
                 <div class="mt-4 rounded-xl border {{ $varietasTheme['border'] }} {{ $varietasTheme['bg'] }} p-4">
                     <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
@@ -1065,7 +1176,7 @@
                                 {{ $rekomendasiVarietas['total_curah_hujan'] }} mm
                             </p>
                             <p class="text-xs text-slate-500">
-                                selama 30 hari
+                                selama 120 hari
                             </p>
                         </div>
 
@@ -1118,7 +1229,7 @@
                     </div>
                 @else
                     <div class="mt-4 rounded-xl border border-yellow-200 bg-yellow-50 p-4 text-sm text-yellow-800">
-                        {{ $isHistorical ? 'Evaluasi kesesuaian varietas belum dapat ditentukan karena data iklim 30 hari belum lengkap.' : 'Rekomendasi varietas belum dapat ditentukan karena data iklim 30 hari belum lengkap.' }}
+                        {{ $isHistorical ? 'Evaluasi kesesuaian varietas belum dapat ditentukan karena data iklim 120 hari belum lengkap.' : 'Rekomendasi varietas belum dapat ditentukan karena data iklim 120 hari belum lengkap.' }}
                     </div>
                 @endif
             </div>
@@ -1139,7 +1250,7 @@
             </p>
 
             <p class="mt-2 text-sm leading-relaxed text-slate-700">
-                {{ $rekomendasiVarietas['penjelasan'] }}
+                {{ $penjelasanVarietasDisplay }}
             </p>
         </div>
 
@@ -1175,6 +1286,15 @@
             <p class="mt-2 text-xs text-slate-500">
                 {{ $teksSumberVarietas }}
             </p>
+
+            <div class="mt-3 rounded-lg border border-yellow-200 bg-yellow-50 p-3 text-xs leading-relaxed text-yellow-800">
+                <p class="font-semibold">
+                    Catatan Batas Operasional
+                </p>
+                <p class="mt-1">
+                    {{ $teksDisclaimerVarietas }}
+                </p>
+            </div>
         </div>
     </div>
 </div>
@@ -1481,7 +1601,8 @@
     @if(!empty($rekomendasiIklim))
         <h2>{{ $judulCardTanam ?? 'Rekomendasi Waktu Tanam' }}</h2>
 
-        <p>Status rekomendasi: <strong>{{ $statusTanamLabel ?? $statusUser }}</strong></p>
+        <p>{{ $isHistorical ? 'Status evaluasi' : 'Status rekomendasi' }}: <strong>{{ $statusTanamLabel ?? $statusUser }}</strong></p>
+        <p>Skor Kelayakan: <strong>{{ $rekomendasiIklim['skor_fuzzy'] ?? $rekomendasiIklim['skor'] ?? '-' }}/100</strong></p>
         <p>Periode analisis: <strong>{{ $rekomendasiIklim['periode'] }}</strong></p>
         <p>{{ $kesimpulan }}</p>
 
@@ -1499,47 +1620,47 @@
                     <td>Suhu</td>
                     <td>{{ $suhu !== null ? $suhu.' °C' : '-' }}</td>
                     <td>{{ $suhuOk ? 'Mendukung' : 'Belum Mendukung' }}</td>
-                    <td>24 – 32°C</td>
+                    <td>22 – 30°C</td>
                 </tr>
                 <tr>
                     <td>Kelembaban</td>
                     <td>{{ $kelembaban !== null ? $kelembaban.' %' : '-' }}</td>
                     <td>{{ $kelembabanOk ? 'Mendukung' : 'Belum Mendukung' }}</td>
-                    <td>60 – 90%</td>
+                    <td>63 – 83%</td>
                 </tr>
                 <tr>
                     <td>Curah Hujan</td>
                     <td>{{ $hujan !== null ? $hujan.' mm' : '-' }}</td>
                     <td>{{ $hujanOk ? 'Mendukung' : 'Belum Mendukung' }}</td>
-                    <td>150 – 200 mm/30 hari</td>
+                    <td>600 – 800 mm/120 hari</td>
                 </tr>
             </tbody>
         </table>
 
         <p><strong>Kesimpulan:</strong> {{ $kesimpulanDetail }}</p>
-        <p><strong>Saran:</strong> {{ $saranDetail }}</p>
+        <p><strong>{{ $labelSaranTanam ?? ($isHistorical ? 'Catatan Evaluasi' : 'Saran') }}:</strong> {{ $saranDetail }}</p>
     @endif
 
     @if(!empty($rekomendasiIklim['kebutuhan_air']))
-        <h2>Estimasi Kebutuhan Air</h2>
+        <h2>{{ $judulAir ?? 'Estimasi Kebutuhan Air' }}</h2>
 
         <p>Status: <strong>{{ $statusAir }}</strong></p>
-        <p>Kebutuhan air: <strong>{{ $air['kebutuhan_minimum'] }} – {{ $air['kebutuhan_maksimum'] }} mm/30 hari</strong></p>
+        <p>Kebutuhan air: <strong>{{ $air['kebutuhan_minimum'] }} – {{ $air['kebutuhan_maksimum'] }} mm/120 hari</strong></p>
         <p>Total curah hujan: <strong>{{ $air['total_curah_hujan'] !== null ? $air['total_curah_hujan'].' mm' : '-' }}</strong></p>
 
         @if($nilaiSelisihAir !== null)
             <p>{{ $labelSelisihAir }}: <strong>{{ $nilaiSelisihAir }} mm</strong></p>
         @endif
 
-        <p>{{ $air['kesimpulan'] }}</p>
+        <p>{{ $kesimpulanAir ?? $air['kesimpulan'] }}</p>
 
-        @if(!empty($air['saran']))
-            <p><strong>Catatan:</strong> {{ $air['saran'] }}</p>
+        @if(!empty($catatanAir))
+            <p><strong>Catatan:</strong> {{ $catatanAir }}</p>
         @endif
     @endif
 
     @if(!empty($rekomendasiVarietas))
-        <h2>Rekomendasi Varietas Padi</h2>
+        <h2>{{ $judulVarietasPadi ?? 'Rekomendasi Varietas Padi' }}</h2>
 
         <p>Kategori: <strong>{{ $rekomendasiVarietas['kategori_tampilan'] }}</strong></p>
         <p>Periode analisis: <strong>{{ $rekomendasiVarietas['periode'] }}</strong></p>
@@ -1547,7 +1668,7 @@
         <p>{{ $teksRekomendasiVarietas }}</p>
 
         @if($rekomendasiVarietas['valid'])
-            <p><strong>Varietas utama:</strong></p>
+            <p><strong>{{ $isHistorical ? 'Varietas yang dinilai sesuai:' : 'Varietas utama:' }}</strong></p>
             <ol>
                 @foreach($rekomendasiVarietas['varietas_utama'] as $namaVarietas)
                     <li>{{ $namaVarietas }}</li>
@@ -1562,13 +1683,13 @@
             @endif
         @endif
 
-        <p>{{ $rekomendasiVarietas['penjelasan'] }}</p>
+        <p>{{ $penjelasanVarietasDisplay ?? $rekomendasiVarietas['penjelasan'] }}</p>
     @endif
 
     <h2>Catatan</h2>
     <p>
         Laporan ini dihasilkan secara otomatis oleh Website Pertanian Presisi untuk komoditas padi
-        berdasarkan data klimatologi, data prediksi, dan hasil analisis rekomendasi.
+        berdasarkan data klimatologi, data prediksi, dan {{ ($isHistorical ?? false) ? 'hasil evaluasi kondisi pada periode yang dipilih.' : 'hasil analisis rekomendasi.' }}
     </p>
 </div>
 

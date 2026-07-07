@@ -9,16 +9,22 @@ use Carbon\CarbonPeriod;
 
 class RekomendasiService
 {
-    private const HORIZON_DAYS = 30;
+    private const HORIZON_DAYS = 120;
 
-    private const SUHU_MIN = 24;
-    private const SUHU_MAX = 32;
+    private const SUHU_TRANSISI_MIN = 19;
+    private const SUHU_OPTIMAL_MIN = 22;
+    private const SUHU_OPTIMAL_MAX = 27;
+    private const SUHU_TRANSISI_MAX = 30;
 
-    private const KELEMBABAN_MIN = 60;
-    private const KELEMBABAN_MAX = 90;
+    private const KELEMBABAN_TRANSISI_MIN = 60;
+    private const KELEMBABAN_OPTIMAL_MIN = 63;
+    private const KELEMBABAN_OPTIMAL_MAX = 80;
+    private const KELEMBABAN_TRANSISI_MAX = 83;
 
-    private const HUJAN_30_MIN = 150;
-    private const HUJAN_30_MAX = 200;
+    private const HUJAN_120_TRANSISI_MIN = 493; // dari aturan 1500 per tahun menjadi 493 per 120hari
+    private const HUJAN_120_OPTIMAL_MIN = 600;
+    private const HUJAN_120_OPTIMAL_MAX = 657; //800
+    private const HUJAN_120_TRANSISI_MAX = 800; //960 (dari aturan 8mm/perhari menjadi 960 per 120hari)
 
     private const BATAS_HUJAN_LEBAT = 50;
     private const BATAS_HARI_KERING_BERTURUT = 5;
@@ -59,7 +65,13 @@ class RekomendasiService
                 'jumlah_prediksi' => $jumlahPrediksi,
                 'jumlah_tidak_tersedia' => $jumlahTidakTersedia,
                 'skor' => null,
-                'alasan' => 'Data iklim selama 30 hari belum lengkap. Rekomendasi belum dapat dihitung dengan akurat.',
+                'skor_fuzzy' => null,
+                'derajat_suhu' => null,
+                'derajat_kelembaban' => null,
+                'derajat_curah_hujan' => null,
+                'tingkat_kesesuaian' => null,
+                'alasan_fuzzy' => null,
+                'alasan' => 'Data iklim selama 120 hari belum lengkap. Rekomendasi belum dapat dihitung dengan akurat.',
                 'saran' => 'Silakan lakukan generate prediksi melalui halaman admin atau lengkapi data klimatologi terlebih dahulu.',
                 'detail_harian' => $dataAnalisis,
                 'risiko_iklim' => [],
@@ -77,48 +89,21 @@ class RekomendasiService
         $periodeKering = $this->deteksiPeriodeKering($dataTersedia->values()->all());
         $risikoIklim = $this->buatRisikoIklim($hariHujanLebat, $periodeKering);
 
-        $suhuMendukung = $rataSuhu >= self::SUHU_MIN && $rataSuhu <= self::SUHU_MAX;
-        $kelembabanMendukung = $rataKelembaban >= self::KELEMBABAN_MIN && $rataKelembaban <= self::KELEMBABAN_MAX;
-        $curahHujanMendukung = $totalCurahHujan >= self::HUJAN_30_MIN && $totalCurahHujan <= self::HUJAN_30_MAX;
+        $derajatSuhu = $this->fuzzySuhu($rataSuhu);
+        $derajatKelembaban = $this->fuzzyKelembaban($rataKelembaban);
+        $derajatCurahHujan = $this->fuzzyCurahHujan($totalCurahHujan);
 
-        $skor = 0;
-
-        if ($suhuMendukung) {
-            $skor++;
-        }
-
-        if ($kelembabanMendukung) {
-            $skor++;
-        }
-
-        if ($curahHujanMendukung) {
-            $skor++;
-        }
-
-        if ($skor === 3) {
-            $status = 'Direkomendasikan';
-
-            if (count($risikoIklim) > 0) {
-                $saran = 'Kondisi iklim 30 hari secara umum mendukung untuk memulai tanam padi. Namun, tetap perlu memperhatikan peringatan risiko iklim yang terdeteksi selama periode analisis.';
-            } else {
-                $saran = 'Kondisi iklim 30 hari mendukung untuk memulai tanam padi. Petani tetap disarankan melakukan pemantauan rutin terhadap kondisi lahan.';
-            }
-        } elseif ($skor === 2) {
-            $status = 'Direkomendasikan dengan Waspada';
-            $saran = 'Tanam masih dapat dipertimbangkan, tetapi terdapat parameter iklim yang belum berada pada rentang mendukung sehingga perlu dilakukan antisipasi.';
-        } else {
-            $status = 'Tidak Direkomendasikan';
-            $saran = 'Kondisi iklim 30 hari belum mendukung. Sebaiknya menunda waktu tanam atau menunggu kondisi iklim yang lebih sesuai.';
-        }
-
-        $alasan = $this->buatAlasan30Hari(
-            $suhuMendukung,
-            $kelembabanMendukung,
-            $curahHujanMendukung,
+        $skorFuzzy = $this->hitungSkorFuzzyTanam(
             $rataSuhu,
             $rataKelembaban,
-            $totalCurahHujan
+            $totalCurahHujan,
+            $hariHujanLebat->count(),
+            $periodeKering['durasi']
         );
+        $status = $this->statusTanamDariSkor($skorFuzzy);
+        $tingkatKesesuaian = $this->tingkatKesesuaianDariSkor($skorFuzzy);
+        $alasan = $this->buatAlasanAnalisis($derajatSuhu, $derajatKelembaban, $derajatCurahHujan, $rataSuhu, $rataKelembaban, $totalCurahHujan);
+        $saran = $this->buatSaranTanamFuzzy($skorFuzzy, $derajatCurahHujan, $hariHujanLebat->count(), $periodeKering['durasi'], count($risikoIklim));
 
         return [
             'valid' => true,
@@ -133,12 +118,18 @@ class RekomendasiService
             'jumlah_aktual' => $jumlahAktual,
             'jumlah_prediksi' => $jumlahPrediksi,
             'jumlah_tidak_tersedia' => $jumlahTidakTersedia,
-            'skor' => $skor,
+            'skor' => $skorFuzzy,
+            'skor_fuzzy' => $skorFuzzy,
+            'derajat_suhu' => $derajatSuhu,
+            'derajat_kelembaban' => $derajatKelembaban,
+            'derajat_curah_hujan' => $derajatCurahHujan,
+            'tingkat_kesesuaian' => $tingkatKesesuaian,
+            'alasan_fuzzy' => $alasan,
             'alasan' => $alasan,
             'saran' => $saran,
             'detail_harian' => $dataAnalisis,
             'risiko_iklim' => $risikoIklim,
-            'kebutuhan_air' => $this->hitungKebutuhanAir($totalCurahHujan, true),
+            'kebutuhan_air' => $this->hitungKebutuhanAir($totalCurahHujan, true, $derajatCurahHujan),
         ];
     }
 
@@ -170,16 +161,19 @@ class RekomendasiService
                 'jumlah_tidak_tersedia' => $hasil['jumlah_tidak_tersedia'],
                 'varietas_utama' => [],
                 'varietas_alternatif' => [],
-                'kesimpulan' => 'Data curah hujan 30 hari belum lengkap, sehingga sistem belum dapat menentukan rekomendasi varietas padi.',
-                'penjelasan' => 'Lengkapi data klimatologi atau lakukan generate prediksi agar sistem dapat menghitung rekomendasi varietas padi berdasarkan periode 30 hari.',
+                'kesimpulan' => 'Data curah hujan 120 hari belum lengkap, sehingga sistem belum dapat menentukan rekomendasi varietas padi.',
+                'penjelasan' => 'Lengkapi data klimatologi atau lakukan generate prediksi agar sistem dapat menghitung rekomendasi varietas padi berdasarkan periode 120 hari.',
             ];
         }
 
-        if ($totalCurahHujan < self::HUJAN_30_MIN) {
+        $derajatCurahHujan = $this->fuzzyCurahHujan($totalCurahHujan);
+        $kondisiAirDominan = $this->kondisiAirDominan($derajatCurahHujan);
+
+        if ($kondisiAirDominan === 'rendah') {
             return [
                 'valid' => true,
-                'kategori' => 'Potensi Kekeringan',
-                'kategori_tampilan' => 'Kondisi Air Rendah',
+                'kategori' => 'Varietas Tahan Kekeringan',
+                'kategori_tampilan' => 'Varietas Tahan Kekeringan',
                 'periode' => $tanggalMulai->format('d M Y') . ' – ' . $tanggalSelesai->format('d M Y'),
                 'total_curah_hujan' => $totalCurahHujan,
                 'jumlah_aktual' => $hasil['jumlah_aktual'],
@@ -210,16 +204,17 @@ class RekomendasiService
                     'Buyung',
                     'Inpari 39',
                 ],
-                'kesimpulan' => 'Curah hujan 30 hari berada di bawah kebutuhan air padi, sehingga varietas tadah hujan lebih disarankan untuk mengurangi risiko kekurangan air.',
-                'penjelasan' => 'Total curah hujan selama 30 hari berada di bawah kebutuhan air yang dianjurkan, yaitu 150–200 mm per 30 hari. Kondisi ini menunjukkan potensi kekurangan air sehingga varietas tadah hujan atau varietas yang lebih toleran terhadap kondisi kering lebih sesuai untuk digunakan.',
+                'kesimpulan' => 'Curah hujan 120 hari berada di bawah kebutuhan air padi, sehingga varietas tahan kekeringan lebih disarankan untuk mengurangi risiko kekurangan air.',
+                'penjelasan' => 'Total curah hujan selama 120 hari berada di bawah kebutuhan air yang dianjurkan, yaitu 600–800 mm per 120 hari. Kondisi ini menunjukkan potensi kekurangan air sehingga varietas tahan kekeringan atau varietas yang lebih toleran terhadap kondisi kering lebih sesuai untuk digunakan.',
+                'derajat_curah_hujan' => $derajatCurahHujan,
             ];
         }
 
-        if ($totalCurahHujan <= self::HUJAN_30_MAX) {
+        if ($kondisiAirDominan === 'optimal') {
             return [
                 'valid' => true,
-                'kategori' => 'Kondisi Air Cukup',
-                'kategori_tampilan' => 'Kondisi Air Cukup',
+                'kategori' => 'Varietas Umum',
+                'kategori_tampilan' => 'Varietas Umum',
                 'periode' => $tanggalMulai->format('d M Y') . ' – ' . $tanggalSelesai->format('d M Y'),
                 'total_curah_hujan' => $totalCurahHujan,
                 'jumlah_aktual' => $hasil['jumlah_aktual'],
@@ -247,15 +242,16 @@ class RekomendasiService
                     'Munawacita Agritan',
                     'Mustaban Agritan',
                 ],
-                'kesimpulan' => 'Curah hujan 30 hari berada pada rentang kebutuhan air padi, sehingga varietas padi umum dapat dipertimbangkan untuk periode ini.',
-                'penjelasan' => 'Total curah hujan selama 30 hari berada pada rentang kebutuhan air padi, yaitu 150–200 mm per 30 hari. Kondisi ini menunjukkan bahwa ketersediaan air relatif cukup untuk mendukung budidaya padi secara umum.',
+                'kesimpulan' => 'Curah hujan 120 hari berada pada rentang kebutuhan air padi, sehingga varietas untuk kondisi air cukup dapat dipertimbangkan untuk periode ini.',
+                'penjelasan' => 'Total curah hujan selama 120 hari berada pada rentang kebutuhan air padi, yaitu 600–800 mm per 120 hari. Kondisi ini menunjukkan bahwa ketersediaan air relatif cukup untuk mendukung budidaya padi secara umum.',
+                'derajat_curah_hujan' => $derajatCurahHujan,
             ];
         }
 
         return [
             'valid' => true,
-            'kategori' => 'Potensi Banjir atau Genangan',
-            'kategori_tampilan' => 'Kondisi Air Berlebih',
+            'kategori' => 'Varietas Toleran Genangan',
+            'kategori_tampilan' => 'Varietas Toleran Genangan',
             'periode' => $tanggalMulai->format('d M Y') . ' – ' . $tanggalSelesai->format('d M Y'),
             'total_curah_hujan' => $totalCurahHujan,
             'jumlah_aktual' => $hasil['jumlah_aktual'],
@@ -271,8 +267,9 @@ class RekomendasiService
                 'Inpara 4',
                 'Ciherang',
             ],
-            'kesimpulan' => 'Curah hujan 30 hari melebihi kebutuhan air untuk tanaman padi, sehingga varietas yang toleran terhadap rendaman lebih disarankan untuk mengurangi risiko genangan.',
-            'penjelasan' => 'Total curah hujan selama 30 hari melebihi kebutuhan air yang dianjurkan, yaitu 150–200 mm per 30 hari. Kondisi ini menunjukkan potensi kelebihan air, genangan, atau banjir sehingga varietas yang lebih toleran terhadap rendaman lebih sesuai untuk digunakan.',
+            'kesimpulan' => 'Curah hujan 120 hari melebihi kebutuhan air untuk tanaman padi, sehingga varietas tahan genangan atau banjir lebih disarankan untuk mengurangi risiko genangan.',
+            'penjelasan' => 'Total curah hujan selama 120 hari melebihi kebutuhan air yang dianjurkan, yaitu 600–800 mm per 120 hari. Kondisi ini menunjukkan potensi kelebihan air, genangan, atau banjir sehingga varietas yang lebih toleran terhadap rendaman lebih sesuai untuk digunakan.',
+            'derajat_curah_hujan' => $derajatCurahHujan,
         ];
     }
 
@@ -414,10 +411,10 @@ class RekomendasiService
         return $risiko;
     }
 
-    private function hitungKebutuhanAir(?float $totalCurahHujan, bool $valid = true): array
+    private function hitungKebutuhanAir(?float $totalCurahHujan, bool $valid = true, ?array $derajatCurahHujan = null): array
     {
-        $kebutuhanMinimum = self::HUJAN_30_MIN;
-        $kebutuhanMaksimum = self::HUJAN_30_MAX;
+        $kebutuhanMinimum = self::HUJAN_120_OPTIMAL_MIN;
+        $kebutuhanMaksimum = self::HUJAN_120_TRANSISI_MAX;
 
         if (!$valid || $totalCurahHujan === null) {
             return [
@@ -428,81 +425,287 @@ class RekomendasiService
                 'total_curah_hujan' => null,
                 'estimasi_kekurangan_air' => null,
                 'kelebihan_air' => null,
-                'rumus' => 'Kebutuhan air minimum - total curah hujan 30 hari',
-                'kesimpulan' => 'Estimasi kebutuhan air belum dapat dihitung karena data curah hujan 30 hari belum lengkap.',
+                'rumus' => 'Kebutuhan air minimum - total curah hujan 120 hari',
+                'kesimpulan' => 'Estimasi kebutuhan air belum dapat dihitung karena data curah hujan 120 hari belum lengkap.',
                 'saran' => 'Lengkapi data klimatologi atau lakukan generate prediksi terlebih dahulu agar sistem dapat menghitung estimasi kebutuhan air.',
             ];
         }
 
         $estimasiKekuranganAir = max(0, round($kebutuhanMinimum - $totalCurahHujan, 2));
         $kelebihanAir = max(0, round($totalCurahHujan - $kebutuhanMaksimum, 2));
+        $derajatCurahHujan = $derajatCurahHujan ?? $this->fuzzyCurahHujan($totalCurahHujan);
+        $kondisiAirDominan = $this->kondisiAirDominan($derajatCurahHujan);
 
-        if ($totalCurahHujan < $kebutuhanMinimum) {
+        if ($kondisiAirDominan === 'rendah') {
             return [
                 'valid' => true,
-                'status' => 'Kebutuhan Air Kurang',
+                'status' => 'Kekurangan Air',
                 'kebutuhan_minimum' => $kebutuhanMinimum,
                 'kebutuhan_maksimum' => $kebutuhanMaksimum,
                 'total_curah_hujan' => $totalCurahHujan,
                 'estimasi_kekurangan_air' => $estimasiKekuranganAir,
                 'kelebihan_air' => 0,
                 'rumus' => "{$kebutuhanMinimum} - {$totalCurahHujan} = {$estimasiKekuranganAir} mm",
-                'kesimpulan' => "Total curah hujan 30 hari masih berada di bawah kebutuhan minimum air untuk tanaman padi. Diperkirakan terdapat kekurangan air sekitar {$estimasiKekuranganAir} mm selama periode yang dipilih.",
+                'kesimpulan' => "Total curah hujan 120 hari masih berada di bawah kebutuhan minimum air untuk tanaman padi. Diperkirakan terdapat kekurangan air sekitar {$estimasiKekuranganAir} mm selama periode yang dipilih.",
                 'saran' => 'Siapkan sumber air atau irigasi tambahan untuk membantu menjaga ketersediaan air pada periode yang dipilih.',
+                'derajat_curah_hujan' => $derajatCurahHujan,
             ];
         }
 
-        if ($totalCurahHujan <= $kebutuhanMaksimum) {
+        if ($kondisiAirDominan === 'optimal') {
             return [
                 'valid' => true,
-                'status' => 'Kebutuhan Air Tercukupi',
+                'status' => 'Air Tercukupi',
                 'kebutuhan_minimum' => $kebutuhanMinimum,
                 'kebutuhan_maksimum' => $kebutuhanMaksimum,
                 'total_curah_hujan' => $totalCurahHujan,
                 'estimasi_kekurangan_air' => 0,
                 'kelebihan_air' => 0,
-                'rumus' => 'Curah hujan berada pada rentang kebutuhan air 150–200 mm/30 hari',
-                'kesimpulan' => 'Total curah hujan 30 hari berada pada rentang kebutuhan air yang optimal untuk tanaman padi, sehingga kebutuhan air pada periode ini relatif tercukupi.',
+                'rumus' => 'Curah hujan berada pada rentang kebutuhan air 600–800 mm/120 hari',
+                'kesimpulan' => 'Total curah hujan 120 hari berada pada rentang kebutuhan air yang optimal untuk tanaman padi, sehingga kebutuhan air pada periode ini relatif tercukupi.',
                 'saran' => 'Tetap lakukan pemantauan kondisi lahan dan ketersediaan air secara berkala.',
+                'derajat_curah_hujan' => $derajatCurahHujan,
             ];
         }
 
         return [
             'valid' => true,
-            'status' => 'Kelebihan Air',
+            'status' => 'Potensi Air Berlebih',
             'kebutuhan_minimum' => $kebutuhanMinimum,
             'kebutuhan_maksimum' => $kebutuhanMaksimum,
             'total_curah_hujan' => $totalCurahHujan,
             'estimasi_kekurangan_air' => 0,
             'kelebihan_air' => $kelebihanAir,
             'rumus' => "{$totalCurahHujan} - {$kebutuhanMaksimum} = {$kelebihanAir} mm",
-            'kesimpulan' => "Total curah hujan 30 hari melebihi batas kebutuhan air untuk tanaman padi. Terdapat potensi kelebihan air sekitar {$kelebihanAir} mm.",
+            'kesimpulan' => "Total curah hujan 120 hari melebihi batas kebutuhan air untuk tanaman padi. Terdapat potensi kelebihan air sekitar {$kelebihanAir} mm.",
             'saran' => 'Pastikan saluran air atau drainase berfungsi dengan baik untuk mengurangi risiko genangan pada lahan.',
+            'derajat_curah_hujan' => $derajatCurahHujan,
         ];
     }
 
-    private function buatAlasan30Hari(
-        bool $suhuMendukung,
-        bool $kelembabanMendukung,
-        bool $curahHujanMendukung,
+    private function buatAlasanAnalisis(
+        array $derajatSuhu,
+        array $derajatKelembaban,
+        array $derajatCurahHujan,
         float $rataSuhu,
         float $rataKelembaban,
         float $totalCurahHujan
     ): string {
         $alasan = [];
 
+        $suhuMendukung = $rataSuhu >= 22 && $rataSuhu <= 30;
+        $kelembabanMendukung = $rataKelembaban >= 63 && $rataKelembaban <= 83;
+        $curahHujanMendukung = $totalCurahHujan >= 600 && $totalCurahHujan <= 800;
+
         $alasan[] = $suhuMendukung
-            ? "Rata-rata suhu {$rataSuhu}°C berada pada rentang mendukung 24–32°C."
-            : "Rata-rata suhu {$rataSuhu}°C berada di luar rentang mendukung 24–32°C.";
+            ? "Rata-rata suhu {$rataSuhu} derajat C berada pada rentang mendukung 22–30 derajat C."
+            : "Rata-rata suhu {$rataSuhu} derajat C berada di luar rentang mendukung 22–30 derajat C.";
 
         $alasan[] = $kelembabanMendukung
-            ? "Rata-rata kelembaban {$rataKelembaban}% berada pada rentang mendukung 60–90%."
-            : "Rata-rata kelembaban {$rataKelembaban}% berada di luar rentang mendukung 60–90%.";
+            ? "Rata-rata kelembaban {$rataKelembaban}% berada pada rentang mendukung 63–83%."
+            : "Rata-rata kelembaban {$rataKelembaban}% berada di luar rentang mendukung 63–83%.";
 
         $alasan[] = $curahHujanMendukung
-            ? "Total curah hujan {$totalCurahHujan} mm selama 30 hari berada pada rentang mendukung 150–200 mm."
-            : "Total curah hujan {$totalCurahHujan} mm selama 30 hari berada di luar rentang mendukung 150–200 mm.";
+            ? "Total curah hujan {$totalCurahHujan} mm selama 120 hari berada pada rentang mendukung 600–800 mm."
+            : "Total curah hujan {$totalCurahHujan} mm selama 120 hari berada di luar rentang mendukung 600–800 mm.";
 
         return implode(' ', $alasan);
+    }
+
+    private function naik(float $x, float $a, float $b): float
+    {
+        if ($x <= $a) {
+            return 0.0;
+        }
+
+        if ($x >= $b) {
+            return 1.0;
+        }
+
+        return round(($x - $a) / ($b - $a), 4);
+    }
+
+    private function turun(float $x, float $a, float $b): float
+    {
+        if ($x <= $a) {
+            return 1.0;
+        }
+
+        if ($x >= $b) {
+            return 0.0;
+        }
+
+        return round(($b - $x) / ($b - $a), 4);
+    }
+
+    private function trapesium(float $x, float $a, float $b, float $c, float $d): float
+    {
+        if ($x <= $a || $x >= $d) {
+            return 0.0;
+        }
+
+        if ($x >= $b && $x <= $c) {
+            return 1.0;
+        }
+
+        if ($x > $a && $x < $b) {
+            return round(($x - $a) / ($b - $a), 4);
+        }
+
+        return round(($d - $x) / ($d - $c), 4);
+    }
+
+    private function segitiga(float $x, float $a, float $b, float $c): float
+    {
+        if ($x <= $a || $x >= $c) {
+            return 0.0;
+        }
+
+        if ($x === $b) {
+            return 1.0;
+        }
+
+        if ($x < $b) {
+            return round(($x - $a) / ($b - $a), 4);
+        }
+
+        return round(($c - $x) / ($c - $b), 4);
+    }
+
+    private function fuzzySuhu(float $x): array
+    {
+        return [
+            'rendah' => $this->turun($x, self::SUHU_TRANSISI_MIN, self::SUHU_OPTIMAL_MIN),
+            'optimal' => $this->trapesium($x, self::SUHU_TRANSISI_MIN, self::SUHU_OPTIMAL_MIN, self::SUHU_OPTIMAL_MAX, self::SUHU_TRANSISI_MAX),
+            'tinggi' => $this->naik($x, self::SUHU_OPTIMAL_MAX, self::SUHU_TRANSISI_MAX),
+        ];
+    }
+
+    private function fuzzyKelembaban(float $x): array
+    {
+        return [
+            'rendah' => $this->turun($x, self::KELEMBABAN_TRANSISI_MIN, self::KELEMBABAN_OPTIMAL_MIN),
+            'optimal' => $this->trapesium($x, self::KELEMBABAN_TRANSISI_MIN, self::KELEMBABAN_OPTIMAL_MIN, self::KELEMBABAN_OPTIMAL_MAX, self::KELEMBABAN_TRANSISI_MAX),
+            'tinggi' => $this->naik($x, self::KELEMBABAN_OPTIMAL_MAX, self::KELEMBABAN_TRANSISI_MAX),
+        ];
+    }
+
+    private function fuzzyCurahHujan(float $x): array
+    {
+        return [
+            'rendah' => $this->turun($x, self::HUJAN_120_TRANSISI_MIN, self::HUJAN_120_OPTIMAL_MIN),
+            'optimal' => $this->trapesium($x, self::HUJAN_120_TRANSISI_MIN, self::HUJAN_120_OPTIMAL_MIN, self::HUJAN_120_OPTIMAL_MAX, self::HUJAN_120_TRANSISI_MAX),
+            'tinggi' => $this->naik($x, self::HUJAN_120_OPTIMAL_MAX, self::HUJAN_120_TRANSISI_MAX),
+        ];
+    }
+
+    private function hitungSkorFuzzyTanam(
+        float $rataSuhu,
+        float $rataKelembaban,
+        float $totalCurahHujan,
+        int $jumlahHariHujanLebat,
+        int $hariKeringTerpanjang
+    ): int {
+        $skorSuhu = $this->skorParameterSugeno($this->fuzzySuhu($rataSuhu), 25, 25);
+        $skorKelembaban = $this->skorParameterSugeno($this->fuzzyKelembaban($rataKelembaban), 20, 20);
+        $skorCurahHujan = $this->skorParameterSugeno($this->fuzzyCurahHujan($totalCurahHujan), 15, 20);
+
+        $penaltiHujanLebat = min(30, $jumlahHariHujanLebat * 5);
+        $penaltiKering = $hariKeringTerpanjang >= self::BATAS_HARI_KERING_BERTURUT
+            ? min(35, ($hariKeringTerpanjang - self::BATAS_HARI_KERING_BERTURUT + 1) * 5)
+            : 0;
+        $skorRisiko = max(0, 100 - $penaltiHujanLebat - $penaltiKering);
+
+        return (int) round(($skorSuhu * 0.25) + ($skorKelembaban * 0.25) + ($skorCurahHujan * 0.40) + ($skorRisiko * 0.10));
+    }
+
+    private function skorParameterSugeno(array $derajat, int $skorRendah = 30, int $skorTinggi = 30): float
+    {
+        $pembilang = ($derajat['rendah'] * $skorRendah)
+            + ($derajat['optimal'] * 100)
+            + ($derajat['tinggi'] * $skorTinggi);
+        $penyebut = array_sum($derajat);
+
+        if ($penyebut <= 0) {
+            return min($skorRendah, $skorTinggi);
+        }
+
+        return $pembilang / $penyebut;
+    }
+
+    private function statusTanamDariSkor(int $skor): string
+    {
+        if ($skor >= 80) {
+            return 'Direkomendasikan';
+        }
+
+        if ($skor >= 50) {
+            return 'Direkomendasikan dengan Waspada';
+        }
+
+        return 'Tidak Direkomendasikan';
+    }
+
+    private function tingkatKesesuaianDariSkor(int $skor): string
+    {
+        if ($skor >= 80) {
+            return 'tingkat kesesuaian tinggi';
+        }
+
+        if ($skor >= 50) {
+            return 'tingkat kesesuaian sedang';
+        }
+
+        return 'tingkat kesesuaian rendah';
+    }
+
+    private function kondisiAirDominan(array $derajatCurahHujan): string
+    {
+        arsort($derajatCurahHujan);
+
+        return array_key_first($derajatCurahHujan) ?: 'optimal';
+    }
+
+    private function frasaDerajatFuzzy(array $derajat, string $konteks = 'iklim'): string
+    {
+        $dominan = $this->kondisiAirDominan($derajat);
+        $optimal = round(($derajat['optimal'] ?? 0) * 100);
+        $nilaiDominan = round(($derajat[$dominan] ?? 0) * 100);
+
+        if ($dominan === 'optimal' && $nilaiDominan >= 80) {
+            return 'tingkat kesesuaian tinggi';
+        }
+
+        if ($optimal >= 40) {
+            return 'tingkat kesesuaian sedang dan masih mendekati kondisi optimal';
+        }
+
+        if ($konteks === 'air') {
+            return "tingkat kesesuaian rendah dengan kondisi air dominan {$dominan}, sehingga perlu pengelolaan irigasi/drainase";
+        }
+
+        return "tingkat kesesuaian rendah dengan kecenderungan {$dominan}";
+    }
+
+    private function buatSaranTanamFuzzy(
+        int $skorFuzzy,
+        array $derajatCurahHujan,
+        int $jumlahHariHujanLebat,
+        int $hariKeringTerpanjang,
+        int $jumlahRisikoIklim
+    ): string {
+        if ($skorFuzzy >= 80) {
+            $saran = 'Kondisi iklim 120 hari mendukung untuk memulai tanam padi. Petani tetap disarankan melakukan pemantauan rutin terhadap kondisi lahan.';
+
+            if ($jumlahRisikoIklim > 0) {
+                $saran = 'Kondisi iklim 120 hari secara umum mendukung untuk memulai tanam padi. Namun, tetap perlu memperhatikan peringatan risiko iklim yang terdeteksi selama periode analisis.';
+            }
+        } elseif ($skorFuzzy >= 50) {
+            $saran = 'Tanam masih dapat dipertimbangkan, tetapi terdapat parameter iklim yang belum berada pada rentang mendukung sehingga perlu dilakukan antisipasi.';
+        } else {
+            $saran = 'Kondisi iklim 120 hari belum mendukung. Sebaiknya menunda waktu tanam atau menunggu kondisi iklim yang lebih sesuai.';
+        }
+
+        return $saran;
     }
 }
