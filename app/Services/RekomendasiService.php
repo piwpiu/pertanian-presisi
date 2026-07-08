@@ -626,7 +626,7 @@ class RekomendasiService
 
         $penaltiHujanLebat = min(25, $jumlahHariHujanLebat * 5);
         $penaltiKering = $hariKeringTerpanjang >= self::BATAS_HARI_KERING_BERTURUT
-            ? min(30, $hariKeringTerpanjang)
+            ? min(30, 5 + (($hariKeringTerpanjang - self::BATAS_HARI_KERING_BERTURUT) * 2))
             : 0;
         $skorRisiko = max(0, 100 - $penaltiHujanLebat - $penaltiKering);
 
