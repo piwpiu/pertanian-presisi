@@ -621,23 +621,21 @@ class RekomendasiService
         int $hariKeringTerpanjang
     ): int {
         $skorSuhu = $this->skorParameterSugeno($this->fuzzySuhu($rataSuhu), 25, 25);
-        $skorKelembaban = $this->skorParameterSugeno($this->fuzzyKelembaban($rataKelembaban), 20, 20);
-        $skorCurahHujan = $this->skorParameterSugeno($this->fuzzyCurahHujan($totalCurahHujan), 15, 20);
+        $skorKelembaban = $this->skorParameterSugeno($this->fuzzyKelembaban($rataKelembaban), 25, 25);
+        $skorCurahHujan = $this->skorParameterSugeno($this->fuzzyCurahHujan($totalCurahHujan), 25, 25);
 
-        $penaltiHujanLebat = min(30, $jumlahHariHujanLebat * 5);
+        $penaltiHujanLebat = min(25, $jumlahHariHujanLebat * 5);
         $penaltiKering = $hariKeringTerpanjang >= self::BATAS_HARI_KERING_BERTURUT
-            ? min(35, ($hariKeringTerpanjang - self::BATAS_HARI_KERING_BERTURUT + 1) * 5)
+            ? min(30, $hariKeringTerpanjang)
             : 0;
         $skorRisiko = max(0, 100 - $penaltiHujanLebat - $penaltiKering);
 
         return (int) round(($skorSuhu * 0.25) + ($skorKelembaban * 0.25) + ($skorCurahHujan * 0.40) + ($skorRisiko * 0.10));
     }
 
-    private function skorParameterSugeno(array $derajat, int $skorRendah = 30, int $skorTinggi = 30): float
+    private function skorParameterSugeno(array $derajat, int $skorRendah = 25, int $skorTinggi = 25): float
     {
-        $pembilang = ($derajat['rendah'] * $skorRendah)
-            + ($derajat['optimal'] * 100)
-            + ($derajat['tinggi'] * $skorTinggi);
+        $pembilang = ($derajat['rendah'] * $skorRendah) + ($derajat['optimal'] * 100) + ($derajat['tinggi'] * $skorTinggi);
         $penyebut = array_sum($derajat);
 
         if ($penyebut <= 0) {
