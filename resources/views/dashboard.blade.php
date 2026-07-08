@@ -296,7 +296,7 @@
         </button>
         <div class="accordion-content hidden px-6 py-4 bg-gray-50 border-t border-gray-200">
             <p class="text-sm text-gray-700 leading-relaxed">
-                <strong>Curah hujan</strong> menunjukkan jumlah air hujan yang diterima dalam satu hari. Pada tanaman padi, curah hujan sekitar <strong>4 – 7 mm/hari</strong> umumnya mendukung pertumbuhan yang optimal. Curah hujan yang terlalu rendah dapat menyebabkan kekurangan air, sedangkan curah hujan yang terlalu tinggi dapat menimbulkan genangan.
+                <strong>Curah hujan</strong> menunjukkan jumlah air hujan yang diterima dalam satu hari. Pada tanaman padi, curah hujan sekitar <strong>4 – 8 mm/hari</strong> umumnya mendukung pertumbuhan yang optimal. Curah hujan yang terlalu rendah dapat menyebabkan kekurangan air, sedangkan curah hujan yang terlalu tinggi dapat menimbulkan genangan.
             </p>
         </div>
     </div>
@@ -795,9 +795,12 @@
         ],
     };
 
-    $labelSelisihAir = in_array($statusAir, ['Kelebihan Air', 'Potensi Air Berlebih'], true)
-        ? 'Kelebihan Air'
-        : 'Estimasi Kekurangan Air';
+    $labelSelisihAir = match($statusAir) {
+        'Kelebihan Air', 'Potensi Air Berlebih' => 'Kelebihan Air',
+        'Kebutuhan Air Kurang', 'Kekurangan Air' => 'Defisit Air',
+        'Kebutuhan Air Tercukupi', 'Air Tercukupi' => 'Defisit Air',
+        default => 'Selisih Air',
+    };
 
     $nilaiSelisihAir = in_array($statusAir, ['Kelebihan Air', 'Potensi Air Berlebih'], true)
         ? ($air['kelebihan_air'] ?? null)
@@ -806,14 +809,14 @@
     $ringkasanAir = $isHistorical
         ? match($statusAir) {
             'Kebutuhan Air Kurang', 'Kekurangan Air' => 'Curah hujan pada periode tersebut belum mencukupi kebutuhan minimum air untuk tanaman padi, sehingga ketersediaan air menjadi faktor yang perlu diperhatikan.',
-            'Kebutuhan Air Tercukupi', 'Air Tercukupi' => 'Curah hujan pada periode tersebut berada pada rentang optimal kebutuhan air untuk tanaman padi, sehingga ketersediaan air dinilai relatif mencukupi.',
-            'Kelebihan Air', 'Potensi Air Berlebih' => 'Curah hujan pada periode tersebut melebihi kebutuhan air untuk tanaman padi, sehingga drainase lahan menjadi faktor penting untuk mengurangi risiko genangan.',
+            'Kebutuhan Air Tercukupi', 'Air Tercukupi' => 'Curah hujan pada periode tersebut masih berada dalam batas kecukupan air untuk tanaman padi. Jika nilainya melewati rentang optimal, pemantauan drainase tetap perlu diperhatikan.',
+            'Kelebihan Air', 'Potensi Air Berlebih' => 'Curah hujan pada periode tersebut melebihi batas kecukupan air untuk tanaman padi, sehingga drainase lahan menjadi faktor penting untuk mengurangi risiko genangan.',
             default => 'Data curah hujan belum lengkap untuk mengevaluasi ketersediaan air.',
         }
         : match($statusAir) {
             'Kebutuhan Air Kurang', 'Kekurangan Air' => 'Curah hujan belum mencukupi kebutuhan minimum air untuk tanaman padi, sehingga diperlukan perhatian terhadap ketersediaan air.',
-            'Kebutuhan Air Tercukupi', 'Air Tercukupi' => 'Curah hujan berada pada rentang optimal kebutuhan air untuk tanaman padi, sehingga kondisi air pada awal tanam relatif mencukupi.',
-            'Kelebihan Air', 'Potensi Air Berlebih' => 'Curah hujan melebihi kebutuhan air untuk tanaman padi, sehingga perlu memperhatikan potensi genangan dan drainase lahan.',
+            'Kebutuhan Air Tercukupi', 'Air Tercukupi' => 'Curah hujan masih berada dalam batas kecukupan air untuk tanaman padi. Jika nilainya melewati rentang optimal, pemantauan drainase tetap perlu diperhatikan.',
+            'Kelebihan Air', 'Potensi Air Berlebih' => 'Curah hujan melebihi batas kecukupan air untuk tanaman padi, sehingga perlu memperhatikan potensi genangan dan drainase lahan.',
             default => 'Data curah hujan belum lengkap untuk menghitung estimasi kebutuhan air.',
         };
 
@@ -1086,26 +1089,26 @@
         $teksRekomendasiVarietas = $isHistorical
             ? match($rekomendasiVarietas['kategori']) {
                 'Potensi Kekeringan', 'Varietas Tahan Kekeringan' =>
-                    "Curah hujan selama 120 hari dari tanggal {$tanggalTanamVarietas} berada di bawah kebutuhan air untuk tanaman padi sawah irigasi. Berdasarkan kondisi iklim pada periode tersebut, varietas berikut dinilai sesuai sebagai pilihan varietas: {$teksVarietasUtama}.",
+                    "Curah hujan selama 120 hari dari tanggal {$tanggalTanamVarietas} berada di bawah kebutuhan air untuk tanaman padi. Berdasarkan kondisi iklim pada periode tersebut, varietas berikut dinilai sesuai sebagai pilihan varietas: {$teksVarietasUtama}.",
 
                 'Kondisi Air Cukup', 'Varietas Umum' =>
-                    "Curah hujan selama 120 hari dari tanggal {$tanggalTanamVarietas} berada pada rentang optimal untuk kebutuhan air tanaman padi sawah irigasi. Berdasarkan kondisi iklim pada periode tersebut, varietas berikut dinilai sesuai sebagai pilihan varietas: {$teksVarietasUtama}.",
+                    "Curah hujan selama 120 hari dari tanggal {$tanggalTanamVarietas} berada pada rentang optimal untuk kebutuhan air pada tanaman padi. Berdasarkan kondisi iklim pada periode tersebut, varietas berikut dinilai sesuai sebagai pilihan varietas: {$teksVarietasUtama}.",
 
                 'Potensi Banjir / Genangan', 'Varietas Toleran Genangan' =>
-                    "Curah hujan selama 120 hari dari tanggal {$tanggalTanamVarietas} melebihi kebutuhan air untuk tanaman padi sawah irigasi. Berdasarkan kondisi iklim pada periode tersebut, varietas berikut dinilai sesuai sebagai pilihan varietas: {$teksVarietasUtama}.",
+                    "Curah hujan selama 120 hari dari tanggal {$tanggalTanamVarietas} melebihi kebutuhan air untuk tanaman padi. Berdasarkan kondisi iklim pada periode tersebut, varietas berikut dinilai sesuai sebagai pilihan varietas: {$teksVarietasUtama}.",
 
                 default =>
                     "Evaluasi kesesuaian varietas pada tanggal {$tanggalTanamVarietas} belum dapat ditentukan.",
             }
             : match($rekomendasiVarietas['kategori']) {
                 'Potensi Kekeringan', 'Varietas Tahan Kekeringan' =>
-                    "Curah hujan 120 hari dari tanggal {$tanggalTanamVarietas} berada di bawah kebutuhan air untuk tanaman padi sawah irigasi, sehingga varietas yang disarankan adalah {$teksVarietasUtama}.",
+                    "Curah hujan selama 120 hari dari tanggal {$tanggalTanamVarietas} berada di bawah kebutuhan air untuk tanaman padi, sehingga varietas yang disarankan adalah {$teksVarietasUtama}.",
 
                 'Kondisi Air Cukup', 'Varietas Umum' =>
-                    "Curah hujan 120 hari dari tanggal {$tanggalTanamVarietas} berada pada rentang optimal untuk kebutuhan air tanaman padi sawah irigasi, sehingga varietas yang dapat dipertimbangkan adalah {$teksVarietasUtama}.",
+                    "Curah hujan selama 120 hari dari tanggal {$tanggalTanamVarietas} berada pada rentang optimal untuk kebutuhan air pada tanaman padi, sehingga varietas yang dapat dipertimbangkan adalah {$teksVarietasUtama}.",
 
                 'Potensi Banjir / Genangan', 'Varietas Toleran Genangan' =>
-                    "Curah hujan 120 hari dari tanggal {$tanggalTanamVarietas} melebihi kebutuhan air untuk tanaman padi sawah irigasi, sehingga varietas yang disarankan adalah {$teksVarietasUtama}.",
+                    "Curah hujan selama 120 hari dari tanggal {$tanggalTanamVarietas} melebihi kebutuhan air untuk tanaman padi, sehingga varietas yang disarankan adalah {$teksVarietasUtama}.",
 
                 default =>
                     "Rekomendasi varietas pada tanggal {$tanggalTanamVarietas} belum dapat ditentukan.",
@@ -1115,11 +1118,11 @@
     $penjelasanVarietasDisplay = $isHistorical
         ? match($rekomendasiVarietas['kategori']) {
             'Potensi Kekeringan', 'Varietas Tahan Kekeringan' =>
-                'Total curah hujan selama 120 hari pada periode tersebut berada di bawah kebutuhan air padi sawah irigasi. Kondisi ini menunjukkan potensi kekurangan air, sehingga varietas yang lebih toleran terhadap kekeringan dinilai sesuai sebagai pilihan varietas.',
+                'Total curah hujan selama 120 hari pada periode tersebut berada di bawah kebutuhan air untuk tanaman padi pada sawah irigasi. Kondisi ini menunjukkan potensi kekurangan air, sehingga varietas yang lebih toleran terhadap kekeringan dinilai sesuai sebagai pilihan varietas.',
             'Kondisi Air Cukup', 'Varietas Umum' =>
-                'Total curah hujan selama 120 hari pada periode tersebut berada pada rentang kebutuhan air padi sawah irigasi, yaitu 600-800 mm per 120 hari. Kondisi ini menunjukkan bahwa ketersediaan air relatif cukup untuk mendukung budidaya padi secara umum.',
+                'Total curah hujan selama 120 hari pada periode tersebut berada dalam batas kecukupan air untuk tanaman padi pada sawah irigasi, yaitu 600 – 960 mm per 120 hari. Jika curah hujan berada pada 600 – 800 mm, kondisi tergolong optimal. Jika berada di atas 800 mm hingga 960 mm, air masih tercukupi tetapi pemantauan drainase tetap perlu diperhatikan.',
             'Potensi Banjir / Genangan', 'Varietas Toleran Genangan' =>
-                'Total curah hujan selama 120 hari pada periode tersebut melebihi kebutuhan air yang dianjurkan untuk padi sawah irigasi, yaitu 600-800 mm per 120 hari. Kondisi ini menunjukkan potensi kelebihan air, genangan, atau banjir, sehingga varietas yang lebih toleran terhadap rendaman dinilai sesuai sebagai pilihan varietas.',
+                'Total curah hujan selama 120 hari pada periode tersebut melebihi kebutuhan air yang dianjurkan untuk tanaman padi pada sawah irigasi, yaitu 600 – 960 mm per 120 hari. Kondisi ini menunjukkan potensi kelebihan air, genangan, atau banjir, sehingga varietas yang lebih toleran terhadap rendaman dinilai sesuai sebagai pilihan varietas.',
             default =>
                 'Evaluasi kesesuaian varietas belum dapat ditentukan karena data iklim pada periode tersebut belum lengkap.',
         }
@@ -1163,7 +1166,7 @@
 
                 <div class="mt-3 inline-flex items-center gap-2 rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
                     <i class="fa-solid fa-seedling"></i>
-                    Konteks lahan: {{ $tipeLahan }}
+                    Konteks Lahan: {{ $tipeLahan }}
                 </div>
 
                 <div class="mt-4 rounded-xl border {{ $varietasTheme['border'] }} {{ $varietasTheme['bg'] }} p-4">
@@ -1305,10 +1308,6 @@
 @endif
 
 <script>
-    /*
-      Script section: data injection, navbar/mobile menu toggles,
-      and Chart.js rendering for suhu & curah hujan.
-    */
     // Data dari controller
     const grafikData = @json($grafikData ?? []);
     // Register datalabels plugin if loaded

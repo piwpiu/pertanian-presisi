@@ -21,10 +21,10 @@ class RekomendasiService
     private const KELEMBABAN_OPTIMAL_MAX = 80;
     private const KELEMBABAN_TRANSISI_MAX = 83;
 
-    private const HUJAN_120_TRANSISI_MIN = 493; // dari aturan 1500 per tahun menjadi 493 per 120hari
-    private const HUJAN_120_OPTIMAL_MIN = 600;
-    private const HUJAN_120_OPTIMAL_MAX = 657; //800
-    private const HUJAN_120_TRANSISI_MAX = 800; //960 (dari aturan 8mm/perhari menjadi 960 per 120hari)
+    private const HUJAN_120_TRANSISI_MIN = 480; //480 (4mm/hari menjadi 480 per 120hari) || 493 (1500/tahun menjadi 493 per 120hari)
+    private const HUJAN_120_OPTIMAL_MIN = 600; //600
+    private const HUJAN_120_OPTIMAL_MAX = 800; //800 || 657 (2000/tahun menjadi 657 per 120hari)
+    private const HUJAN_120_TRANSISI_MAX = 960; //960 (8mm/hari menjadi 960 per 120hari)
 
     private const BATAS_HUJAN_LEBAT = 50;
     private const BATAS_HARI_KERING_BERTURUT = 5;
@@ -167,7 +167,13 @@ class RekomendasiService
         }
 
         $derajatCurahHujan = $this->fuzzyCurahHujan($totalCurahHujan);
-        $kondisiAirDominan = $this->kondisiAirDominan($derajatCurahHujan);
+        if ($totalCurahHujan < self::HUJAN_120_OPTIMAL_MIN) {
+            $kondisiAirDominan = 'rendah';
+        } elseif ($totalCurahHujan <= self::HUJAN_120_TRANSISI_MAX) {
+            $kondisiAirDominan = 'optimal';
+        } else {
+            $kondisiAirDominan = 'tinggi';
+        }
 
         if ($kondisiAirDominan === 'rendah') {
             return [
@@ -204,8 +210,8 @@ class RekomendasiService
                     'Buyung',
                     'Inpari 39',
                 ],
-                'kesimpulan' => 'Curah hujan 120 hari berada di bawah kebutuhan air padi, sehingga varietas tahan kekeringan lebih disarankan untuk mengurangi risiko kekurangan air.',
-                'penjelasan' => 'Total curah hujan selama 120 hari berada di bawah kebutuhan air yang dianjurkan, yaitu 600–800 mm per 120 hari. Kondisi ini menunjukkan potensi kekurangan air sehingga varietas tahan kekeringan atau varietas yang lebih toleran terhadap kondisi kering lebih sesuai untuk digunakan.',
+                'kesimpulan' => 'Curah hujan 120 hari berada di bawah kebutuhan air untuk tanaman padi, sehingga varietas tahan kekeringan lebih disarankan untuk mengurangi risiko kekurangan air.',
+                'penjelasan' => 'Total curah hujan selama 120 hari berada di bawah batas minimum kecukupan air tanaman padi, yaitu 600 mm per 120 hari. Kondisi ini menunjukkan potensi kekurangan air sehingga varietas tahan kekeringan atau varietas yang lebih toleran terhadap kondisi kering lebih sesuai untuk digunakan.',
                 'derajat_curah_hujan' => $derajatCurahHujan,
             ];
         }
@@ -242,8 +248,8 @@ class RekomendasiService
                     'Munawacita Agritan',
                     'Mustaban Agritan',
                 ],
-                'kesimpulan' => 'Curah hujan 120 hari berada pada rentang kebutuhan air padi, sehingga varietas untuk kondisi air cukup dapat dipertimbangkan untuk periode ini.',
-                'penjelasan' => 'Total curah hujan selama 120 hari berada pada rentang kebutuhan air padi, yaitu 600–800 mm per 120 hari. Kondisi ini menunjukkan bahwa ketersediaan air relatif cukup untuk mendukung budidaya padi secara umum.',
+                'kesimpulan' => 'Curah hujan 120 hari berada pada rentang kebutuhan air untuk tanaman padi, sehingga varietas untuk kondisi air cukup dapat dipertimbangkan untuk periode ini.',
+                'penjelasan' => 'Total curah hujan selama 120 hari berada dalam batas kecukupan air untuk tanaman padi, yaitu 600 – 960 mm per 120 hari. Jika curah hujan berada pada 600 – 800 mm, kondisi tergolong optimal. Jika berada di atas 800 mm hingga 960 mm, air masih tercukupi tetapi pemantauan drainase tetap perlu diperhatikan.',
                 'derajat_curah_hujan' => $derajatCurahHujan,
             ];
         }
@@ -268,7 +274,7 @@ class RekomendasiService
                 'Ciherang',
             ],
             'kesimpulan' => 'Curah hujan 120 hari melebihi kebutuhan air untuk tanaman padi, sehingga varietas tahan genangan atau banjir lebih disarankan untuk mengurangi risiko genangan.',
-            'penjelasan' => 'Total curah hujan selama 120 hari melebihi kebutuhan air yang dianjurkan, yaitu 600–800 mm per 120 hari. Kondisi ini menunjukkan potensi kelebihan air, genangan, atau banjir sehingga varietas yang lebih toleran terhadap rendaman lebih sesuai untuk digunakan.',
+            'penjelasan' => 'Total curah hujan selama 120 hari melebihi batas kecukupan air tanaman padi, yaitu 960 mm per 120 hari. Kondisi ini menunjukkan potensi kelebihan air, genangan, atau banjir sehingga varietas yang lebih toleran terhadap rendaman lebih sesuai untuk digunakan.',
             'derajat_curah_hujan' => $derajatCurahHujan,
         ];
     }
@@ -428,15 +434,15 @@ class RekomendasiService
                 'rumus' => 'Kebutuhan air minimum - total curah hujan 120 hari',
                 'kesimpulan' => 'Estimasi kebutuhan air belum dapat dihitung karena data curah hujan 120 hari belum lengkap.',
                 'saran' => 'Lengkapi data klimatologi atau lakukan generate prediksi terlebih dahulu agar sistem dapat menghitung estimasi kebutuhan air.',
+                'derajat_curah_hujan' => $derajatCurahHujan,
             ];
         }
 
         $estimasiKekuranganAir = max(0, round($kebutuhanMinimum - $totalCurahHujan, 2));
         $kelebihanAir = max(0, round($totalCurahHujan - $kebutuhanMaksimum, 2));
         $derajatCurahHujan = $derajatCurahHujan ?? $this->fuzzyCurahHujan($totalCurahHujan);
-        $kondisiAirDominan = $this->kondisiAirDominan($derajatCurahHujan);
 
-        if ($kondisiAirDominan === 'rendah') {
+        if ($totalCurahHujan < $kebutuhanMinimum) {
             return [
                 'valid' => true,
                 'status' => 'Kekurangan Air',
@@ -452,7 +458,15 @@ class RekomendasiService
             ];
         }
 
-        if ($kondisiAirDominan === 'optimal') {
+        if ($totalCurahHujan <= $kebutuhanMaksimum) {
+            $kesimpulan = $totalCurahHujan <= self::HUJAN_120_OPTIMAL_MAX
+                ? 'Total curah hujan 120 hari berada pada rentang optimal kebutuhan air tanaman padi, sehingga kebutuhan air pada periode ini relatif tercukupi.'
+                : 'Total curah hujan 120 hari masih berada dalam batas ketersediaan air yang dapat mencukupi kebutuhan tanaman padi. Namun, karena nilainya telah melewati rentang optimal, pemantauan drainase tetap perlu dilakukan.';
+
+            $saran = $totalCurahHujan <= self::HUJAN_120_OPTIMAL_MAX
+                ? 'Tetap lakukan pemantauan kondisi lahan dan ketersediaan air secara berkala.'
+                : 'Kebutuhan air masih tercukupi, tetapi pastikan saluran drainase tetap berfungsi baik untuk mengantisipasi peningkatan curah hujan.';
+
             return [
                 'valid' => true,
                 'status' => 'Air Tercukupi',
@@ -461,9 +475,9 @@ class RekomendasiService
                 'total_curah_hujan' => $totalCurahHujan,
                 'estimasi_kekurangan_air' => 0,
                 'kelebihan_air' => 0,
-                'rumus' => 'Curah hujan berada pada rentang kebutuhan air 600–800 mm/120 hari',
-                'kesimpulan' => 'Total curah hujan 120 hari berada pada rentang kebutuhan air yang optimal untuk tanaman padi, sehingga kebutuhan air pada periode ini relatif tercukupi.',
-                'saran' => 'Tetap lakukan pemantauan kondisi lahan dan ketersediaan air secara berkala.',
+                'rumus' => "Curah hujan masih berada pada batas kecukupan air {$kebutuhanMinimum} – {$kebutuhanMaksimum} mm/120 hari",
+                'kesimpulan' => $kesimpulan,
+                'saran' => $saran,
                 'derajat_curah_hujan' => $derajatCurahHujan,
             ];
         }
@@ -477,7 +491,7 @@ class RekomendasiService
             'estimasi_kekurangan_air' => 0,
             'kelebihan_air' => $kelebihanAir,
             'rumus' => "{$totalCurahHujan} - {$kebutuhanMaksimum} = {$kelebihanAir} mm",
-            'kesimpulan' => "Total curah hujan 120 hari melebihi batas kebutuhan air untuk tanaman padi. Terdapat potensi kelebihan air sekitar {$kelebihanAir} mm.",
+            'kesimpulan' => "Total curah hujan 120 hari melebihi batas kecukupan air untuk tanaman padi. Terdapat potensi kelebihan air sekitar {$kelebihanAir} mm.",
             'saran' => 'Pastikan saluran air atau drainase berfungsi dengan baik untuk mengurangi risiko genangan pada lahan.',
             'derajat_curah_hujan' => $derajatCurahHujan,
         ];
@@ -498,16 +512,16 @@ class RekomendasiService
         $curahHujanMendukung = $totalCurahHujan >= 600 && $totalCurahHujan <= 800;
 
         $alasan[] = $suhuMendukung
-            ? "Rata-rata suhu {$rataSuhu} derajat C berada pada rentang mendukung 22–30 derajat C."
-            : "Rata-rata suhu {$rataSuhu} derajat C berada di luar rentang mendukung 22–30 derajat C.";
+            ? "Rata-rata suhu {$rataSuhu}°C berada pada rentang mendukung 22 – 30°C."
+            : "Rata-rata suhu {$rataSuhu}°C berada di luar rentang mendukung 22 – 30°C.";
 
         $alasan[] = $kelembabanMendukung
-            ? "Rata-rata kelembaban {$rataKelembaban}% berada pada rentang mendukung 63–83%."
-            : "Rata-rata kelembaban {$rataKelembaban}% berada di luar rentang mendukung 63–83%.";
+            ? "Rata-rata kelembaban {$rataKelembaban}% berada pada rentang mendukung 63 – 83%."
+            : "Rata-rata kelembaban {$rataKelembaban}% berada di luar rentang mendukung 63 – 83%.";
 
         $alasan[] = $curahHujanMendukung
-            ? "Total curah hujan {$totalCurahHujan} mm selama 120 hari berada pada rentang mendukung 600–800 mm."
-            : "Total curah hujan {$totalCurahHujan} mm selama 120 hari berada di luar rentang mendukung 600–800 mm.";
+            ? "Total curah hujan {$totalCurahHujan} mm selama 120 hari berada pada rentang mendukung 600 – 800 mm."
+            : "Total curah hujan {$totalCurahHujan} mm selama 120 hari berada di luar rentang mendukung 600 – 800 mm.";
 
         return implode(' ', $alasan);
     }
